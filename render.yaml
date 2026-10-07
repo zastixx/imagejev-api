@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: imagejev-api
+    runtime: python
+    plan: standard # 2GB RAM required for CLIP weights
+    region: oregon
+    buildCommand: pip install -r requirements-render.txt && pip install .
+    startCommand: uvicorn imagejev.server:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: IMAGEJEV_ENV
+        value: production
+      - key: IMAGEJEV_PRELOAD
+        value: "true"
+      - key: IMAGEJEV_RATE_LIMIT_ENABLED
+        value: "true"
+      - key: IMAGEJEV_RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: IMAGEJEV_BATCH_RATE_LIMIT_PER_MINUTE
+        value: "15"
+      - key: IMAGEJEV_MAX_BATCH_SIZE
+        value: "50"
+      - key: IMAGEJEV_MAX_QUESTIONS
+        value: "25"
+      - key: IMAGEJEV_MAX_CONCURRENCY
+        value: "4"
+      - key: IMAGEJEV_API_KEYS
+        generateValue: true # Generates a random secure key automatically on Render!

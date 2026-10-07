@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "imagejev"
+version = "0.1.0"
+description = "Image-native structured decision engine: Image + Decision + Schema -> Structured Decision"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "ImageJev Contributors" }
+]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+keywords = [
+    "computer-vision",
+    "clip",
+    "decision-engine",
+    "structured-outputs",
+    "vlm",
+    "classification",
+    "jev",
+    "zero-shot"
+]
+
+dependencies = [
+    "torch>=2.0.0",
+    "open-clip-torch>=2.20.0",
+    "pillow>=9.0.0",
+    "numpy>=1.22.0",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "pydantic>=2.0.0",
+    "python-multipart>=0.0.6",
+]
+dev = [
+    "pytest>=7.0.0",
+    "requests>=2.28.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+]
+all = [
+    "imagejev[server,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/imagejev"
+Documentation = "https://github.com/your-org/imagejev#readme"
+Repository = "https://github.com/your-org/imagejev.git"
+Issues = "https://github.com/your-org/imagejev/issues"
+
+[project.scripts]
+imagejev-server = "imagejev.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+imagejev = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
