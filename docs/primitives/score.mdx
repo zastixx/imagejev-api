@@ -1,0 +1,63 @@
+---
+title: "Score Primitive"
+description: "Ordinal rating primitive: continuous expectation, dispersion analysis, and rubrics."
+---
+
+# Score Primitive
+
+The `score` primitive evaluates an image against an ordered ladder of quality or intensity criteria (2 to 10 levels) and computes a continuous score expectation.
+
+## Schema Definition
+
+```python
+schema = {
+    "type": "score",
+    "levels": [
+        "Lowest level / poorest quality description",
+        "Moderate quality description",
+        "High quality description",
+        "Flawless / best quality description"
+    ]
+}
+```
+
+## Example Usage
+
+```python
+from imagejev import ImageJev
+
+jev = ImageJev()
+
+result = jev.decide(
+    image="photo.jpg",
+    decision="Evaluate lighting and exposure",
+    schema={
+        "type": "score",
+        "levels": [
+            "severely underexposed, dark, noisy, or blown out",
+            "sub-optimal lighting, harsh shadows, uneven exposure",
+            "good ambient lighting, balanced exposure",
+            "studio quality lighting, perfectly balanced exposure"
+        ]
+    }
+)
+
+print(result.score)
+# -> 3.82 (continuous expectation on 1.0 to 4.0 scale)
+
+print(result.confidence)
+# -> 0.941
+
+print(result.dispersion)
+# -> 0.08 (low dispersion indicates consensus; high indicates bimodal split)
+```
+
+## Result Attributes
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `score` | `float` | Weighted expected level index ($1.0$ to $N.0$) |
+| `level` | `int` | Discretized winning level index ($1$ to $N$) |
+| `confidence` | `float` | Certainty metric computed from level variance |
+| `dispersion` | `float` | Standard deviation across levels (detects bimodal ambiguity) |
+| `probabilities` | `List[float]` | Probability assigned to each ordinal level |

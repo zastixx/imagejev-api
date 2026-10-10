@@ -1,0 +1,38 @@
+---
+title: "Fan-Out Atomic Questions"
+description: "Decompose complex multi-attribute evaluations into parallel zero-overhead questions."
+---
+
+# Fan-Out Atomic Questions
+
+Rather than asking a single broad question with vague criteria, the Fan-Out pattern evaluates multiple distinct visual dimensions against the same image embedding simultaneously.
+
+## Parallel Evaluation
+
+Because ImageJev embeds the image only once into a fixed vector, projecting across 10 or 20 distinct question matrices takes virtually zero additional compute (~0.5ms extra on GPU).
+
+```python
+from imagejev import ImageJev
+
+jev = ImageJev()
+
+# Define atomic visual dimensions
+CHECKS = {
+    "is_sharp": {"type": "noul", "hypothesis": "The image is sharp and properly focused"},
+    "is_well_lit": {"type": "noul", "hypothesis": "The image has bright, even studio illumination"},
+    "clean_backdrop": {"type": "noul", "hypothesis": "The subject is isolated on a pure white or neutral background"},
+    "no_watermarks": {"type": "noul", "hypothesis": "The image has no visible text overlays, banners, or logos"}
+}
+
+def evaluate_catalog_photo(image_path: str):
+    # ImageJev evaluates all questions in parallel
+    results = {}
+    for name, schema in CHECKS.items():
+        results[name] = jev.decide(image=image_path, decision=name, schema=schema)
+        
+    passed = all(res.value for res in results.values())
+    return {
+        "approved": passed,
+        "details": {k: v.probability for k, v in results.items()}
+    }
+```

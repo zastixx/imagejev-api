@@ -1,0 +1,64 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "ImageJev",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#0B0B0C",
+    "light": "#0B0B0C",
+    "dark": "#FFFFFF"
+  },
+  "topbarLinks": [
+    {
+      "name": "Interactive Studio",
+      "url": "https://imagejev.dev/playground"
+    },
+    {
+      "name": "Waitlist",
+      "url": "https://imagejev.dev/waitlist"
+    }
+  ],
+  "topbarCta": {
+    "name": "Console",
+    "url": "https://console.imagejev.dev"
+  },
+  "navigation": [
+    {
+      "group": "Get started",
+      "pages": [
+        "introduction",
+        "quickstart",
+        "coding-agents",
+        "use-cases"
+      ]
+    },
+    {
+      "group": "Concepts",
+      "pages": [
+        "concepts/system-one",
+        "concepts/state",
+        {
+          "group": "Primitives",
+          "pages": [
+            "primitives/choice",
+            "primitives/score",
+            "primitives/noul"
+          ]
+        },
+        "concepts/confidence",
+        "concepts/how-to-build"
+      ]
+    },
+    {
+      "group": "Patterns",
+      "pages": [
+        "patterns/confidence-routing",
+        "patterns/fan-out",
+        "patterns/batching"
+      ]
+    }
+  ]
+}

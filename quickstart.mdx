@@ -1,0 +1,66 @@
+---
+title: "Quick start"
+description: "Install the ImageJev Python SDK and make your first structured visual decision."
+---
+
+# Quick start
+
+Begin with the fastest path to running ImageJev in your codebase.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+- Python 3.9 or higher
+- PyTorch environment (supports CPU, Apple Silicon MPS, or NVIDIA CUDA)
+
+## Installation
+
+Install the package using pip:
+
+```bash
+# Core SDK
+pip install imagejev
+
+# With FastAPI production server
+pip install "imagejev[server]"
+
+# Full bundle with benchmarks
+pip install "imagejev[all]"
+```
+
+## Make your first decision
+
+Initialize `ImageJev` and call `.decide()` with an image and a closed schema:
+
+```python
+from imagejev import ImageJev
+
+# 1. Initialize engine
+jev = ImageJev()
+
+# 2. Make a structured decision
+result = jev.decide(
+    image="https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+    decision="Is this photo suitable for e-commerce listing?",
+    schema={
+        "type": "choice",
+        "options": {
+            "yes": "clean, well-lit, professional in-focus product photo",
+            "no": "blurry, dark, low-resolution, damaged, or cluttered photo"
+        }
+    }
+)
+
+print(result.choice)        # -> "yes"
+print(result.confidence)    # -> 0.994
+print(result.probabilities) # -> {"yes": 0.994, "no": 0.006}
+```
+
+## How it works
+
+Unlike autoregressive VLMs (e.g. GPT-4o, Claude Sonnet) which stream hundreds of tokens to answer a visual question, ImageJev embeds the image using frozen CLIP encoders and computes calibrated cosine similarity across textual decision vectors.
+
+This provides:
+- **Zero hallucinations**: 100% adherence to your defined schema options.
+- **Microsecond inference**: <15ms on modern GPUs, ~120ms on modern CPUs.
+- **Calibrated confidence**: Continuous certainty metric calculated from softmax entropy.

@@ -1,0 +1,60 @@
+---
+title: "Choice Primitive"
+description: "Categorical decision primitive: select from a closed set of descriptive options with confidence and full probability distributions."
+---
+
+# Choice Primitive
+
+The `choice` primitive resolves a visual question by selecting exactly one option from a dictionary of choices.
+
+## Schema Definition
+
+```python
+schema = {
+    "type": "choice",
+    "options": {
+        "key1": "Descriptive definition of option 1",
+        "key2": "Descriptive definition of option 2",
+        "key3": "Descriptive definition of option 3"
+    }
+}
+```
+
+## Example Usage
+
+```python
+from imagejev import ImageJev
+
+jev = ImageJev()
+
+result = jev.decide(
+    image="https://images.unsplash.com/photo-1543466835-00a7907e9de1",
+    decision="Identify the animal in this photo",
+    schema={
+        "type": "choice",
+        "options": {
+            "dog": "a domestic dog, puppy, or canine",
+            "cat": "a domestic cat, kitten, or feline",
+            "bird": "a bird, parrot, or winged fowl"
+        }
+    }
+)
+
+print(result.choice)
+# -> "dog"
+
+print(result.confidence)
+# -> 0.992
+
+print(result.probabilities)
+# -> {"dog": 0.992, "cat": 0.005, "bird": 0.003}
+```
+
+## Result Attributes
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `choice` | `str` | The key with the highest similarity score |
+| `probability` | `float` | Softmax probability assigned to the winning choice |
+| `confidence` | `float` | $1 - \text{normalized entropy}$ ($0.0$ to $1.0$) |
+| `probabilities` | `Dict[str, float]` | Full probability distribution across all schema keys |

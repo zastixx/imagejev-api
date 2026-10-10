@@ -1,0 +1,51 @@
+---
+title: "High-Throughput Batching"
+description: "Process 840+ images per second using GPU tensor batching with decide_batch()."
+---
+
+# High-Throughput Batching
+
+When processing millions of catalog items or streaming camera frames, invoking single-image inferences leaves GPU tensor cores underutilized.
+
+ImageJev provides native tensor batching via `decide_batch()`.
+
+## Batch Processing
+
+```python
+from imagejev import ImageJev
+
+jev = ImageJev()
+
+image_urls = [
+    "https://example.com/item1.jpg",
+    "https://example.com/item2.jpg",
+    # ... hundreds of images
+]
+
+schema = {
+    "type": "choice",
+    "options": {
+        "pass": "clear, authentic product photo",
+        "reject": "prohibited, copyright-violating, or illegible image"
+    }
+}
+
+# Evaluates batch concurrently with GPU pipelining
+results = jev.decide_batch(
+    images=image_urls,
+    decision="Content safety & quality check",
+    schema=schema,
+    batch_size=64
+)
+
+for img_url, result in zip(image_urls, results):
+    print(f"{img_url} -> {result.choice} ({result.confidence:.3f})")
+```
+
+## Throughput Benchmarks
+
+| Hardware | Batch Size | Images / Sec | Latency / Image |
+| :--- | :--- | :--- | :--- |
+| Apple M3 Max (MPS) | 32 | 185 img/s | 5.4 ms |
+| NVIDIA RTX 4090 | 64 | 640 img/s | 1.5 ms |
+| NVIDIA A100 (80GB) | 128 | 840+ img/s | 1.1 ms |

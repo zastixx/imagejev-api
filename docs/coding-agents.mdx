@@ -1,0 +1,82 @@
+---
+title: "Jev with Coding Agents"
+description: "Equip AI coding agents, tool-calling pipelines, and autonomous loops with reliable, instant visual judgment."
+---
+
+# Jev with Coding Agents
+
+AI coding agents and autonomous workflows (like Claude Computer Use, SWE-bench agents, browser automation, or code interpreters) frequently need to inspect UI screenshots, diagrams, and rendered output.
+
+Using a full Vision-Language Model inside an agent loop creates critical drawbacks:
+1. **Latency penalty**: 2–5 seconds per screenshot halts agent execution loops.
+2. **Token bloat**: 1,600+ vision tokens per frame deplete context windows.
+3. **Structured formatting failures**: Hallucinated markdown or invalid JSON breaks agent tool-call parsers.
+
+## Providing ImageJev as an Agent Tool
+
+ImageJev provides an ideal lightweight tool for coding agents. Because every primitive returns strict typed values (`choice`, `score`, or `probability`), agents receive deterministic tool outputs in under 20ms.
+
+### Example: Tool Definition (OpenAI / Anthropic format)
+
+```python
+jev_tool_definition = {
+    "name": "visual_inspect",
+    "description": "Inspect a screenshot or visual artifact using fast closed-schema verification.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "image_path": {"type": "string", "description": "Local path or URL to image"},
+            "decision": {"type": "string", "description": "Verification question"},
+            "schema_options": {
+                "type": "object",
+                "description": "Key-value mapping of possible outcomes and criteria"
+            }
+        },
+        "required": ["image_path", "decision", "schema_options"]
+    }
+}
+```
+
+### Tool Handler
+
+```python
+from imagejev import ImageJev
+
+jev = ImageJev()
+
+def handle_visual_inspect(image_path: str, decision: str, schema_options: dict):
+    res = jev.decide(
+        image=image_path,
+        decision=decision,
+        schema={
+            "type": "choice",
+            "options": schema_options
+        }
+    )
+    return {
+        "choice": res.choice,
+        "confidence": res.confidence,
+        "probabilities": res.probabilities
+    }
+```
+
+## Common Agent Patterns
+
+### 1. UI Verification in End-to-End Tests
+An agent modifies CSS and takes a screenshot with headless Chrome:
+```python
+res = jev.decide(
+    image="screenshot.png",
+    decision="Did the modal overlay render properly?",
+    schema={
+        "type": "choice",
+        "options": {
+            "visible": "modal dialog centered on dark backdrop",
+            "hidden_or_broken": "modal is clipped, transparent, or offscreen"
+        }
+    }
+)
+```
+
+### 2. Error Message Spotting
+Agents verify whether visual popups or toasts contain runtime warnings before clicking next buttons in browser automation.

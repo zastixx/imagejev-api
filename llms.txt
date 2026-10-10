@@ -1,0 +1,18 @@
+# ImageJev Documentation Index
+
+> ImageJev is the Image-Native Flagship Model and the first System One Vision Model. Turn pixels and typed questions into structured answers your code can use directly.
+
+- [Introduction](https://imagejev.mintlify.site/introduction)
+- [Quick Start](https://imagejev.mintlify.site/quickstart)
+- [Coding Agents](https://imagejev.mintlify.site/coding-agents)
+- [Example Use Cases](https://imagejev.mintlify.site/use-cases)
+- [Concepts: System One Vision](https://imagejev.mintlify.site/concepts/system-one)
+- [Concepts: State & Vector Space](https://imagejev.mintlify.site/concepts/state)
+- [Concepts: Mathematical Confidence](https://imagejev.mintlify.site/concepts/confidence)
+- [Concepts: How to Build with ImageJev](https://imagejev.mintlify.site/concepts/how-to-build)
+- [Primitives: Choice](https://imagejev.mintlify.site/primitives/choice)
+- [Primitives: Score](https://imagejev.mintlify.site/primitives/score)
+- [Primitives: Noul](https://imagejev.mintlify.site/primitives/noul)
+- [Patterns: Confidence Routing](https://imagejev.mintlify.site/patterns/confidence-routing)
+- [Patterns: Fan-Out](https://imagejev.mintlify.site/patterns/fan-out)
+- [Patterns: Batching](https://imagejev.mintlify.site/patterns/batching)

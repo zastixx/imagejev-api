@@ -1,0 +1,22 @@
+---
+title: "State & Vector Space"
+description: "How multimodal vector representations enable instant visual queries without session drift."
+---
+
+# State & Vector Space
+
+ImageJev is entirely stateless and deterministic.
+
+## Single Image Embedding Reuse
+
+In multi-question pipelines, an image is embedded exactly once. If you ask 10 independent questions about the same image:
+1. The image is passed through the vision backbone to produce a normalized embedding tensor $v_{img} \in \mathbb{R}^{512}$.
+2. All 10 text schemas are embedded into direction matrices.
+3. Batch dot products ($v_{img} \cdot W_{text}^T$) evaluate all 10 determinations in parallel in under $0.5\text{ms}$.
+
+## Zero Hallucination Guarantee
+
+Because there is no autoregressive decoder:
+- No tokens are generated sequentially.
+- The model cannot invent options outside of your schema.
+- The decision is mathematically bounded within the simplex formed by the provided options.

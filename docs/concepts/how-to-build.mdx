@@ -1,0 +1,44 @@
+---
+title: "How to Build with ImageJev"
+description: "Best practices for writing schemas, calibrating options, and architecting robust visual decision graphs."
+---
+
+# How to Build with ImageJev
+
+To get the highest accuracy and reliability from ImageJev, follow these schema engineering principles:
+
+## 1. Frame Closed, Mutually Exclusive Options
+
+Instead of vague options, provide descriptive anchors in your schema:
+
+```python
+# Bad
+schema = {"type": "choice", "options": {"good": "good", "bad": "bad"}}
+
+# Good
+schema = {
+    "type": "choice",
+    "options": {
+        "good": "sharp, centered, clear, professionally lit e-commerce product photo",
+        "bad": "blurry, low-resolution, dark, cropped, or cluttered user upload"
+    }
+}
+```
+
+## 2. Decompose Compound Questions
+
+Do not ask: `"Is this product genuine and does it look clean and well-lit?"`
+
+Decompose into independent atomic questions:
+1. `jev.decide(img, "Is this photo authentic or stock artwork?", ...)`
+2. `jev.decide(img, "Is this photo sharp and well-lit?", ...)`
+
+Then combine them with simple Python logic:
+```python
+if is_authentic and is_sharp:
+    approve()
+```
+
+## 3. Calibrate Thresholds with Ground Truth
+
+Run your dataset through ImageJev to plot accuracy vs. confidence threshold. Pick a threshold (commonly 0.75 to 0.85) that gives the target precision/recall trade-off for your application.

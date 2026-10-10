@@ -1,0 +1,28 @@
+---
+title: "System One Vision"
+description: "Why intuitive, fast, subconscious-style visual processing differs fundamentally from autoregressive reasoning."
+---
+
+# System One Vision
+
+In cognitive psychology (Kahneman, 2011), the brain operates in two distinct modes:
+- **System 1**: Fast, instinctive, automatic, and subconscious (e.g. recognizing an angry expression, detecting an obstacle).
+- **System 2**: Slow, deliberate, logical, and computational (e.g. solving 17 × 24, writing an essay).
+
+Modern Vision-Language Models (VLMs) force all visual tasks through an autoregressive **System 2** text generation pipeline. When asked whether an image is blurry, GPT-4o generates textual tokens one-by-one: `"Based on the provided image, the resolution appears..."`
+
+## The Problem with System Two for Software
+
+1. **Latency overhead**: Streaming tokens takes 1,500ms to 4,000ms.
+2. **Schema fragility**: Models hallucinate text formatting, prepend explanations, or emit invalid markdown fences.
+3. **High cost**: You pay per input image tile and output token.
+4. **Lack of true confidence**: Token logprobs do not correlate directly with visual perceptual certainty.
+
+## The ImageJev Architecture
+
+ImageJev is engineered as an authentic **System One** vision engine:
+- Visual sensory input (pixels) is transformed in a single forward pass through a high-dimensional multimodal embedding space.
+- The decision criteria are embedded as semantic direction vectors.
+- Cosine projection produces calibrated softmax probability distributions and mathematical entropy confidence in under 15ms.
+
+Software gets exactly what it needs: typed values, numerical probabilities, and confidence intervals.
