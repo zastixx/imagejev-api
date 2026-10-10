@@ -58,5 +58,12 @@
         ]
       }
     ]
+  },
+  "icons": {
+    "library": "fontawesome"
+  },
+  "appearance": {
+    "default": "light",
+    "strict": false
   }
 }
