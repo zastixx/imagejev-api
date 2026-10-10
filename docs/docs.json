@@ -4,7 +4,7 @@
   "theme": "sequoia",
   "colors": {
     "primary": "#0B0B0C",
-    "light": "#0B0B0C",
+    "light": "#FDFDFD",
     "dark": "#FFFFFF"
   },
   "topbarLinks": [
