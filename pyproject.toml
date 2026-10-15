@@ -1,14 +1,13 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0,<77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "imagejev"
-version = "0.1.0"
+version = "0.1.2"
 description = "Image-native structured decision engine: Image + Decision + Schema -> Structured Decision"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = { text = "MIT" }
 authors = [
     { name = "ImageJev Contributors" }
 ]
@@ -44,6 +43,7 @@ dependencies = [
     "open-clip-torch>=2.20.0",
     "pillow>=9.0.0",
     "numpy>=1.22.0",
+    "requests>=2.28.0",
 ]
 
 [project.optional-dependencies]
@@ -55,7 +55,6 @@ server = [
 ]
 dev = [
     "pytest>=7.0.0",
-    "requests>=2.28.0",
     "black>=23.0.0",
     "mypy>=1.0.0",
 ]

@@ -39,7 +39,7 @@ def get_client_ip(headers: Dict[str, str], client_host: Optional[str] = None) ->
 
 class SlidingWindowRateLimiter:
     """Thread-safe in-memory sliding window rate limiter.
-    
+
     Parameters:
         requests_per_minute: Default limit for window of 60 seconds.
         window_seconds: Duration of the sliding window in seconds (default: 60).

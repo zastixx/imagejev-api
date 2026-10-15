@@ -1,208 +1,207 @@
 # ImageJev
 
-**The Image-Native Structured Decision Engine**
+An image-native structured decision engine using frozen OpenCLIP embeddings.
+Provide an image and a decision schema to obtain structured results without
+autoregressive text generation. Structured output does not guarantee a correct
+prediction, and ImageJev is not a general-purpose vision-language model.
 
-[![PyPI version](https://img.shields.io/pypi/v/imagejev.svg)](https://pypi.org/project/imagejev/)
-[![Python versions](https://img.shields.io/pypi/pyversions/imagejev.svg)](https://pypi.org/project/imagejev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+The default backbone is OpenCLIP `ViT-B-32` with `laion2b_s34b_b79k` weights.
 
-```
-Jev:       TEXT   + DECISION SCHEMA -> structured decision
-ImageJev:  IMAGE  + DECISION + SCHEMA -> structured decision
-```
-
-`imagejev` is a high-throughput, deterministic visual decision engine. It replaces heavy Vision-Language Models (VLMs) with a single frozen CLIP embedding pass and calibrated closed-schema decision math.
-
-- ⚡ **216x lower latency** (~120ms CPU, <15ms GPU)
-- 💰 **500–800x lower cost** than proprietary LLM vision APIs
-- 🎯 **92.5% accuracy** on CIFAR-10 (statistically indistinguishable from Claude Sonnet 5, McNemar $p=0.23$)
-- 🔒 **Zero auto-regressive hallucinations**: 100% schema adherence guarantee
-
----
-
-## 📦 Installation
+## Installation
 
 ```bash
-# Core SDK
 pip install imagejev
-
-# With FastAPI server support
-pip install "imagejev[server]"
-
-# Full development bundle
-pip install "imagejev[all]"
+pip install "imagejev[server]"  # Optional FastAPI server
 ```
 
-*Note: For GPU acceleration, ensure PyTorch with CUDA or MPS is installed.*
+The package uses PyTorch, OpenCLIP, Pillow, and NumPy. Real inference requires
+model weights; the initial model load may download them. GPU availability depends
+on your PyTorch installation and hardware.
 
----
-
-## 🚀 Quickstart
+## Quickstart
 
 ```python
 from imagejev import ImageJev
 
-# 1. Initialize engine (loads CLIP ViT-B-32 on first use)
 jev = ImageJev()
-
-# 2. Make a structured decision
 result = jev.decide(
-    image="product.jpg",  # supports local path, URL, PIL.Image, or bytes
-    decision="Is this product image suitable for e-commerce listing?",
+    image="product.jpg",
+    decision="Is this product image suitable for listing?",
     schema={
         "type": "choice",
         "options": {
-            "yes": "a clean, well-lit, professional in-focus product photo",
-            "no": "a blurry, dark, torn, damaged, or cluttered product photo",
+            "yes": "a clear, well-lit, in-focus product photo",
+            "no": "a blurry, underexposed, cluttered, or damaged product photo",
         },
     },
 )
 
-print(result.choice)        # -> "yes"
-print(result.probability)   # -> 0.998
-print(result.confidence)    # -> 0.996
-print(result.probabilities) # -> {"yes": 0.998, "no": 0.002}
+print(result.choice)
+print(result.probability)
+print(result.confidence)
+print(result.probabilities)
 ```
 
----
+Outputs depend on the image, model, and option descriptions. No fixed prediction
+or probability is implied by this example. For `choice` and `score`, the schema
+descriptions drive the comparison; the decision question is not an additional
+reasoning step.
 
-## 🧩 The Three Decision Primitives
+## Decision schemas
 
-### 1. `choice` Schema (Multi-Class & Quality Filtering)
-Evaluates discrete options and returns calibrated probabilities and normalized confidence.
-
-```python
-result = jev.decide(
-    image="https://images.unsplash.com/photo-1543466835-00a7907e9de1",
-    decision="Classify the animal in this photo",
-    schema={
-        "type": "choice",
-        "options": {
-            "dog": "a domestic dog or puppy",
-            "cat": "a domestic cat or kitten",
-            "wildlife": "a wild animal in nature",
-        },
-    },
-)
-# Returns: ChoiceResult(choice='dog', probability=0.994, confidence=0.991, probabilities={...})
-```
-
-### 2. `score` Schema (Continuous Ratings & Dispersion)
-Evaluates ordinal levels (2–10 levels) and computes continuous score expectation, sharpness confidence, and `dispersion` (checks for bimodal disagreement).
+- `choice`: compares described options and returns the selected option,
+  probabilities, and normalized confidence. `allow_none=True` enables abstention
+  using a null anchor and relevance threshold.
+- `score`: accepts 2 to 10 ordered descriptions and returns a zero-based expected
+  score, probabilities, confidence, and dispersion. Inspect the distribution and
+  dispersion rather than relying only on the scalar score.
+- `noul`: compares explicit `true` and `false` descriptions and returns a binary
+  probability. It does not expose a separate confidence field.
 
 ```python
-result = jev.decide(
-    image="photo.jpg",
+score = jev.decide(
+    image="product.jpg",
     decision="Rate lighting and clarity",
-    schema={
-        "type": "score",
-        "levels": [
-            "very dark, underexposed, or blurry",
-            "dimly lit or slightly grainy",
-            "balanced, clear exposure",
-            "bright, professional studio lighting",
-        ],
-    },
+    schema={"type": "score", "levels": [
+        "an underexposed or blurry photograph",
+        "a clearly exposed photograph",
+        "a bright professional studio photograph",
+    ]},
 )
-# Returns: ScoreResult(score=2.85, probability=0.88, confidence=0.84, dispersion=0.01, legend={...})
-```
 
-### 3. `noul` Schema (Binary Truth Probability)
-Standard binary closed-schema decision:
-
-```python
-result = jev.decide(
-    image="car.jpg",
-    decision="Is there a vehicle on a road?",
+binary = jev.decide(
+    image="product.jpg",
+    decision="Is there a vehicle?",
     schema={
         "type": "noul",
-        "true": "a motorized vehicle or car on a road",
-        "false": "nature scenery, animals, or indoor environment",
+        "true": "a photograph of a motor vehicle",
+        "false": "a photograph without a motor vehicle",
     },
 )
-# Returns: NoulResult(probability=0.999)
 ```
 
----
+## Batch and multi-question inference
 
-## ⚡ High-Throughput Batch Processing
+`decide_batch(images, decision, schema)` evaluates images against one schema.
+`decide_multi(image, questions)` evaluates multiple schemas after encoding one
+image. Batch throughput depends on hardware and batch size; larger batches are
+not necessarily faster.
 
-Pass dozens or hundreds of images in a single call to take full advantage of batched tensor matrix operations:
+## HTTP server
+
+```bash
+imagejev-server --host 127.0.0.1 --port 8000
+```
+
+OpenAPI documentation is available at `http://127.0.0.1:8000/docs`.
+Endpoints include `/health`, `/decide`, `/decide_upload`, `/decide_batch`, and
+`/v1/systemone` (also available as `/v1/decide`).
+
+Server settings are read from environment variables. Authentication is disabled
+unless `IMAGEJEV_API_KEYS` is configured; when configured, requests require the
+`X-API-Key` header. Configurable defaults include 60 single-decision requests per
+minute, 15 batch requests per minute, and 50 images per batch request. These are
+request limits, not measured throughput guarantees. Review access controls and
+deployment configuration before exposing the server publicly.
+
+## Remote Python client
+
+Use `ImageJevClient` when inference runs behind the HTTP server rather than in
+the current Python process:
 
 ```python
-images = [
-    "item_1.jpg",
-    "item_2.jpg",
-    "https://example.com/item_3.jpg",
-    "item_4.jpg"
-]
+from imagejev import ImageJevClient
 
-results = jev.decide_batch(
-    images=images,
-    decision="Is this photo compliant with safety guidelines?",
-    schema={"type": "choice", "options": {"compliant": "safe", "violation": "unsafe"}}
-)
-
-for img, res in zip(images, results):
-    print(f"{img}: {res.choice} ({res.confidence:.2f} confidence)")
+with ImageJevClient("https://api.example.com", api_key="your-api-key") as client:
+    result = client.decide(
+        image="https://example.com/product.jpg",
+        decision="Is this product image suitable for listing?",
+        schema={
+            "type": "choice",
+            "options": {
+                "yes": "a clear, well-lit product photograph",
+                "no": "a blurry, cluttered, or damaged product photograph",
+            },
+        },
+    )
+    print(result.choice, result.confidence)
 ```
 
----
+The client sends `X-API-Key`, uses a finite 30-second default timeout, and
+returns the same `ChoiceResult`, `ScoreResult`, and `NoulResult` types as local
+inference. It also provides `decide_batch()` and `decide_multi()`. HTTP failures,
+transport failures, timeouts, and malformed responses raise typed exceptions
+from `imagejev.errors`.
 
-## 🌐 Deploy as a REST API Service
+## Reported benchmark results
 
-Run the production FastAPI service with one command:
+The following historical measurements are reported in the project's `data.md`
+notes dated October 11, 2026. They have not been independently reproduced for this
+description update. The raw CSV and comparison-result JSON artifacts referenced
+by those notes were not located during this review. Treat these as reported
+results, not independently verified release benchmarks or service guarantees.
 
-```bash
-imagejev-server --host 0.0.0.0 --port 8000
-```
+### Live-API product-listing evaluation
 
-### HTTP POST `/decide`
-```bash
-curl -X POST http://localhost:8000/decide \
-  -H "X-API-Key: sk-live-yourkey" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "image": "https://images.unsplash.com/photo-1543466835-00a7907e9de1",
-    "decision": "Identify the pet",
-    "schema": {
-      "type": "choice",
-      "options": {"dog": "a dog", "cat": "a cat"}
-    }
-  }'
-```
+| Measurement | Reported result |
+|---|---|
+| Agreement with proxy labels | 86.8% of 1,014 successful image requests |
+| Agreement at confidence >= 0.95 | 95.5% across 580 images; 57% coverage |
+| Requests excluded | 27 rate-limited requests out of 1,041 attempted |
 
-Interactive OpenAPI documentation is available at `http://localhost:8000/docs`.
+Images came from six Unsplash search categories. Expected labels were inferred
+from search queries, not verified by human annotators. These numbers measure
+agreement with weak proxy labels, not audited real-world accuracy. They apply to
+the tested product-listing schema, not arbitrary visual tasks. The dark/low-light
+category had 74.1% agreement; deliberately moody lighting and underexposure can be
+ambiguous under a combined quality schema.
 
-### 🛡️ Production Security & Safeguards
+### Controlled CIFAR-10 comparison
 
-ImageJev Server includes built-in safeguards configurable via `.env`:
-- **API Key Gate**: Enforced via `X-API-Key` header when `IMAGEJEV_API_KEYS` is defined.
-- **Sliding Window Rate Limiter**: 60 req/min for single decisions, 15 req/min for batches.
-- **DoS Batch Size Cap**: Up to 50 images per batch request.
-- **Payload & SSRF Guards**: 10MB streaming size limit, private IP & link-local network blocking.
-- **Concurrency Gate**: Restricts in-flight model inferences to avoid thread thrashing and memory spikes.
+| System named in the benchmark notes | Reported accuracy on 200 images |
+|---|---|
+| ImageJev | 92.5% |
+| Claude Haiku 4.5 | 80.0% |
+| Claude Sonnet 5 | 95.0% |
 
----
+The notes report McNemar p=0.23 for ImageJev versus Sonnet and a paired-bootstrap
+95% confidence interval of -6.0 to +0.5 percentage points for the accuracy
+difference (ImageJev minus Sonnet). Failure to detect a significant difference
+does not establish equivalence or a statistical tie. This small CIFAR-10 sample
+is not a head-to-head evaluation on product photographs. Exact model identities
+and run details require the original result artifacts before independent audit.
 
-## 💡 Best Practices for Schema Design
+### Compute time versus API latency
 
-* **Descriptive vs. Bare Options**: For subjective or quality judgments (`yes/no`, `good/bad`), **always provide descriptions** in the schema (`options: {"yes": "clean well-lit photo", "no": "blurry dark photo"}`). Bare options default to `"yes: a photo of a yes"`, which confuses CLIP text encoders.
-* **Confidence Gating**: In production pipelines, gate on `result.confidence` rather than `result.choice` alone. Route high-confidence decisions (`> 0.85`) automatically and direct low-confidence cases to human review.
+| Measurement | Reported result | Scope |
+|---|---|---|
+| T4 model-compute median | 6.51 ms | Dedicated-process compute benchmark |
+| Live API round-trip median, run 1 | 405 ms | Includes network and source-image download |
+| Live API round-trip median, run 2 | 613 ms | Includes network and source-image download |
+| Peak tested T4 batch throughput | 309 images/second at batch size 32 | Compute benchmark, not API capacity |
 
----
+Larger tested batches reduced throughput. These measurements are not a matched
+end-to-end speed comparison against hosted VLMs. Hardware, image transfer,
+concurrency, and cold starts affect user-visible latency.
 
-## 📊 Benchmark & Accuracy
+### Cost
 
-Validated head-to-head on held-out CIFAR-10 dataset against Anthropic Claude Sonnet 5:
+Measured production cost per decision is unresolved pending actual billed
+execution-duration data. No fixed cost or cost-saving multiplier is claimed.
 
-| System | Accuracy | P-Value (vs Sonnet 5) | Latency (CPU) | Cost / 1k Queries |
-| :--- | :--- | :--- | :--- | :--- |
-| **Claude Sonnet 5** | 92.5% | — | ~26,000 ms | ~$3.00 |
-| **ImageJev (CLIP)** | **92.5%** | **p = 0.23** *(indistinguishable)* | **~120 ms** | **~$0.004** |
+## Limitations and schema design
 
----
+- Describe visual alternatives explicitly. Bare judgment labels such as `yes`
+  and `no` are poor image-text comparison prompts.
+- Confidence is derived from the model's option distribution, not a guarantee of
+  correctness or an independently calibrated probability for your use case.
+- Select routing thresholds using labeled validation data from your target task;
+  send uncertain cases to human review or another model.
+- Closed options can produce confident errors on unrelated images. Consider a
+  catch-all option or configured abstention and validate its behavior.
+- Embedded text, subtle defects, and ambiguous criteria require task-specific
+  evaluation. ImageJev does not replace OCR or unrestricted visual reasoning.
 
-## 📄 License
+## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+MIT License. See the LICENSE file included in the distribution.

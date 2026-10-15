@@ -183,7 +183,7 @@ class MockBackend:
 
     def _vec(self, text: str) -> np.ndarray:
         words = text.lower().replace(":", " ").split() or [""]
-        v = sum(self._tok(w) for w in words)
+        v = np.sum(np.stack([self._tok(w) for w in words]), axis=0)
         return (v / max(np.linalg.norm(v), 1e-9)).astype(np.float32)
 
     def encode_text(self, texts: Sequence[str]) -> np.ndarray:

@@ -44,7 +44,7 @@ def _confidence(p: np.ndarray) -> float:
 
 def _dispersion(probs: Dict[int, float]) -> float:
     """Fraction of a Score schema's probability mass outside the peak level and its immediate neighbors."""
-    peak = max(probs, key=probs.get)
+    peak = max(probs, key=lambda key: probs[key])
     adjacent = {peak, peak - 1, peak + 1} & set(probs)
     return float(np.clip(1.0 - sum(probs[k] for k in adjacent), 0.0, 1.0))
 
@@ -154,11 +154,11 @@ class ImageJev:
 
         schema_type = schema.get("type")
         if schema_type == "choice":
-            return self._choice_batch(images, schema)
+            return list(self._choice_batch(images, schema))
         if schema_type == "score":
-            return self._score_batch(images, schema)
+            return list(self._score_batch(images, schema))
         if schema_type == "noul":
-            return self._noul_batch(images, decision, schema)
+            return list(self._noul_batch(images, decision, schema))
         raise ValueError(
             f'schema["type"] must be "choice", "score", or "noul", got {schema_type!r}'
         )
@@ -184,7 +184,7 @@ class ImageJev:
             return {}
 
         img_vec = self.backend.encode_image(image)
-        results = {}
+        results: Dict[str, Union[ChoiceResult, ScoreResult, NoulResult]] = {}
 
         for qid, qdata in questions.items():
             # Handle both {"decision": "...", "schema": {...}} and flat format

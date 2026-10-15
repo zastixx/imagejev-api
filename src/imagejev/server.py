@@ -19,12 +19,14 @@ from __future__ import annotations
 import base64
 import json
 import os
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from .backends import MockBackend
 from .core import ImageJev
 from .rate_limiter import ConcurrencyGate, SlidingWindowRateLimiter, get_client_ip
+from . import __version__
 
 try:
     from fastapi import FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile, status
@@ -49,6 +51,7 @@ try:
     MAX_IMAGE_BYTES = int(os.getenv("IMAGEJEV_MAX_IMAGE_BYTES", str(10 * 1024 * 1024)))  # 10MB default
     MAX_CONCURRENCY = int(os.getenv("IMAGEJEV_MAX_CONCURRENCY", "4"))
     CONCURRENCY_TIMEOUT = float(os.getenv("IMAGEJEV_CONCURRENCY_TIMEOUT", "30.0"))
+    TRUST_PROXY_HEADERS = os.getenv("IMAGEJEV_TRUST_PROXY_HEADERS", "false").lower() in ("true", "1", "yes")
 
     # ── Protection Primitives ─────────────────────────────────────────────────────
 
@@ -82,13 +85,36 @@ try:
         image: str = Field(description="Base64 encoded image string, local filepath, or public HTTP/HTTPS URL")
         questions: Dict[str, dict] = Field(description="Mapping of question_id to schema definition")
 
+    def _validate_schema(schema: dict) -> None:
+        if not isinstance(schema, dict):
+            raise ValueError("schema must be an object")
+        schema_type = schema.get("type")
+        if schema_type == "choice":
+            options = schema.get("options")
+            if not isinstance(options, (dict, list, tuple)) or len(options) < 2:
+                raise ValueError("choice schema requires at least two options")
+        elif schema_type == "score":
+            levels = schema.get("levels")
+            if not isinstance(levels, list) or not 2 <= len(levels) <= 10:
+                raise ValueError("score schema requires 2-10 levels")
+        elif schema_type == "noul":
+            if schema.get("true") is not None and not isinstance(schema.get("true"), str):
+                raise ValueError("noul schema 'true' must be a string")
+            if schema.get("false") is not None and not isinstance(schema.get("false"), str):
+                raise ValueError("noul schema 'false' must be a string")
+        else:
+            raise ValueError('schema["type"] must be "choice", "score", or "noul"')
+
     from contextlib import asynccontextmanager
 
     _engine_instance: Dict[str, ImageJev] = {}
+    _engine_lock = threading.Lock()
 
     def get_engine() -> ImageJev:
         if "engine" not in _engine_instance:
-            _engine_instance["engine"] = ImageJev()
+            with _engine_lock:
+                if "engine" not in _engine_instance:
+                    _engine_instance["engine"] = ImageJev()
         return _engine_instance["engine"]
 
     def set_engine(engine: ImageJev) -> None:
@@ -105,7 +131,7 @@ try:
 
     app = FastAPI(
         title="ImageJev API",
-        version="0.2.0",
+        version=__version__,
         description=(
             "Image-native structured decision engine: IMAGE + DECISION + SCHEMA -> structured decision.\n\n"
             "Features built-in per-IP rate limiting, batch size validation, and concurrency throttling."
@@ -115,13 +141,13 @@ try:
         lifespan=lifespan,
     )
 
-    _raw_origins = os.getenv("IMAGEJEV_ALLOWED_ORIGINS", "*").strip()
+    _raw_origins = os.getenv("IMAGEJEV_ALLOWED_ORIGINS", "").strip()
     _allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_allowed_origins,
-        allow_credentials=True,
+        allow_credentials=bool(_allowed_origins),
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
@@ -147,7 +173,8 @@ try:
         client_host = request.client.host if request.client else "unknown"
         # If API key is present, rate limit by key, otherwise by IP
         api_key = headers_dict.get("x-api-key")
-        client_key = f"key:{api_key}" if api_key else f"ip:{get_client_ip(headers_dict, client_host)}"
+        client_ip = get_client_ip(headers_dict, client_host) if TRUST_PROXY_HEADERS else client_host
+        client_key = f"key:{api_key.strip()}" if api_key and VALID_API_KEYS else f"ip:{client_ip}"
 
         allowed, remaining, retry_after, reset_in = rate_limiter.check(
             client_key=client_key,
@@ -252,13 +279,14 @@ try:
         try:
             engine = get_engine()
             image = _decode_image_input(req.image)
+            _validate_schema(req.schema_)
             return engine.decide(image, req.decision, req.schema_)
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=422, detail=str(e))
         except HTTPException:
             raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal decision error: {str(e)}")
+        except Exception:
+            raise HTTPException(status_code=500, detail="Internal decision error")
         finally:
             concurrency_gate.release()
 
@@ -293,6 +321,7 @@ try:
 
         try:
             schema_dict = json.loads(schema_str)
+            _validate_schema(schema_dict)
             engine = get_engine()
             return engine.decide(contents, decision, schema_dict)
         except json.JSONDecodeError:
@@ -301,8 +330,8 @@ try:
             raise HTTPException(status_code=422, detail=str(e))
         except HTTPException:
             raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal decision error: {str(e)}")
+        except Exception:
+            raise HTTPException(status_code=500, detail="Internal decision error")
         finally:
             concurrency_gate.release()
 
@@ -339,13 +368,14 @@ try:
         try:
             engine = get_engine()
             decoded_images = [_decode_image_input(img) for img in req.images]
+            _validate_schema(req.schema_)
             return engine.decide_batch(decoded_images, req.decision, req.schema_)
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=422, detail=str(e))
         except HTTPException:
             raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal decision error: {str(e)}")
+        except Exception:
+            raise HTTPException(status_code=500, detail="Internal decision error")
         finally:
             concurrency_gate.release()
 
@@ -383,14 +413,16 @@ try:
         try:
             engine = get_engine()
             image = _decode_image_input(req.image)
+            for question in req.questions.values():
+                _validate_schema(question.get("schema", question))
             answers = engine.decide_multi(image, req.questions)
             return {"answers": answers}
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=422, detail=str(e))
         except HTTPException:
             raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal decision error: {str(e)}")
+        except Exception:
+            raise HTTPException(status_code=500, detail="Internal decision error")
         finally:
             concurrency_gate.release()
 
@@ -411,7 +443,7 @@ try:
         uvicorn.run("imagejev.server:app", host=args.host, port=args.port, reload=args.reload)
 
 except ImportError:
-    app = None
+    app = None  # type: ignore[no-redef, assignment]
 
     def main():
         print("FastAPI / Uvicorn are not installed. Install with: pip install imagejev[server]")

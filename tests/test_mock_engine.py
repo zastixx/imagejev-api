@@ -19,7 +19,7 @@ def test_choice_basic_and_types(mock_engine):
         }
     }
     res = mock_engine.decide("cute cat sitting on a mat", "What is in the image?", schema)
-    
+
     assert isinstance(res, ChoiceResult)
     assert res.choice == "cat"
     assert 0.0 <= res.probability <= 1.0
@@ -44,7 +44,7 @@ def test_score_properties_and_bounds(mock_engine):
         "levels": ["poor", "fair", "good", "excellent"]
     }
     res = mock_engine.decide("a good quality clear image", "Quality score", schema)
-    
+
     assert isinstance(res, ScoreResult)
     assert 0.0 <= res.score <= 3.0
     assert 0.0 <= res.probability <= 1.0
@@ -68,7 +68,7 @@ def test_noul_schema_and_criteria(mock_engine):
         "false": "a photo with no cats or pets"
     }
     res = mock_engine.decide("a photo of a cat", "Check cat", schema)
-    
+
     assert isinstance(res, NoulResult)
     assert 0.0 <= res.probability <= 1.0
     # Jev spec compliance: Noul has no confidence field

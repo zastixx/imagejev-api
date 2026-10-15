@@ -39,7 +39,7 @@ def test_decide_batch_choice_equivalence(mock_engine):
 def test_decide_batch_score(mock_engine):
     images = ["poor dark photo", "good crisp photo"]
     schema = {"type": "score", "levels": ["poor dark photo", "good crisp photo"]}
-    
+
     batch_res = mock_engine.decide_batch(images, "Rate photo", schema)
     assert len(batch_res) == 2
     assert all(isinstance(r, ScoreResult) for r in batch_res)
@@ -48,7 +48,7 @@ def test_decide_batch_score(mock_engine):
 def test_decide_batch_noul(mock_engine):
     images = ["cat photo", "dog photo"]
     schema = {"type": "noul", "true": "cat photo", "false": "not a cat"}
-    
+
     batch_res = mock_engine.decide_batch(images, "Is it a cat?", schema)
     assert len(batch_res) == 2
     assert all(isinstance(r, NoulResult) for r in batch_res)

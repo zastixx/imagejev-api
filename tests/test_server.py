@@ -129,3 +129,15 @@ def test_decide_endpoint_invalid_schema():
     }
     res = client.post("/decide", json=payload)
     assert res.status_code == 422
+
+
+@pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI is not installed")
+def test_decide_endpoint_missing_choice_options_is_client_error():
+    set_engine(ImageJev(MockBackend()))
+    client = TestClient(app)
+    res = client.post(
+        "/decide",
+        json={"image": "some image", "decision": "test", "schema": {"type": "choice"}},
+    )
+    assert res.status_code == 422
+    assert "choice schema" in res.json()["detail"]
