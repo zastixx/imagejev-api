@@ -1,60 +1,96 @@
 ---
-title: "Example Use Cases"
-description: "Real-world production architectures where ImageJev replaces or gates expensive Vision-Language Models."
+title: "Example use cases"
+description: "Simple patterns for applying ImageJev to visual workflows."
 ---
 
-# Example Use Cases
+# Example use cases
 
-Explore high-impact architectural patterns built on ImageJev's microsecond visual decisions.
+ImageJev works best as a focused decision step inside a larger workflow. Keep the question clear, define the outcomes your application can handle, and send uncertain cases for review.
 
 <CardGroup cols={2}>
-  <Card title="E-Commerce Catalog QA" icon="cart-shopping">
-    Reject blurry photos, cluttered backdrops, and watermarked seller submissions automatically at upload time.
+  <Card title="Catalog photo checks" icon="cart-shopping">
+    Check focus, lighting, background, or listing suitability before publishing an item.
   </Card>
-  <Card title="Trust & Safety Moderation" icon="shield-check">
-    High-throughput first-line triage for NSFW, gore, hate symbols, and policy violations at 800+ imgs/sec.
+  <Card title="Upload triage" icon="inbox">
+    Separate usable uploads from unclear or irrelevant images before the next step.
   </Card>
-  <Card title="Document & Receipt Triage" icon="file-invoice">
-    Classify whether a camera photo is a receipt, invoice, ID card, or invalid blur before sending to expensive OCR.
+  <Card title="Document intake" icon="file-text">
+    Route likely receipts, forms, or other image types to the right workflow.
   </Card>
-  <Card title="Two-Tier VLM Gating" icon="bolt">
-    Save 85%+ in API bills by resolving 90% of routine visual queries locally before invoking Claude or GPT-4o.
+  <Card title="Human review routing" icon="shield-check">
+    Use confidence and relevance signals to send ambiguous cases to a person.
   </Card>
 </CardGroup>
 
-## 1. E-Commerce Marketplace Quality Assurance
-
-In marketplaces with millions of seller uploads daily, enforcing product photography standards with human review or GPT-4o is cost-prohibitive.
+## Catalog photo checks
 
 ```python
 from imagejev import ImageJev
 
 jev = ImageJev()
+result = jev.decide(
+    image="listing.jpg",
+    decision="Is this photo ready for a product listing?",
+    schema={
+        "type": "choice",
+        "options": {
+            "ready": "clear, focused, well-lit product photo",
+            "needs_review": "blurry, dark, cluttered, or damaged photo",
+            "other": "not a product photo",
+        },
+    },
+)
 
-# Run atomic checks against seller image
-sharpness = jev.decide(
-    image="listing_image.jpg",
-    decision="Is this photo sharp and focused?",
-    schema={"type": "choice", "options": {"sharp": "crisp edges and clear details", "blurry": "soft, out of focus, motion blur"}}
+if result.choice == "ready" and result.confidence >= 0.85:
+    approve_listing()
+else:
+    send_to_review()
+```
+
+## Split complex checks
+
+Instead of one broad question, ask focused questions and combine them in your own code:
+
+```python
+focus = jev.decide(
+    image="listing.jpg",
+    decision="Is the product in focus?",
+    schema={
+        "type": "choice",
+        "options": {
+            "yes": "sharp edges and visible product details",
+            "no": "soft focus, motion blur, or unreadable details",
+        },
+    },
 )
 
 background = jev.decide(
-    image="listing_image.jpg",
-    decision="Is the background isolated or cluttered?",
-    schema={"type": "choice", "options": {"isolated": "clean white or neutral studio backdrop", "cluttered": "bedroom, carpet, messy background"}}
+    image="listing.jpg",
+    decision="Is the background suitable for a listing?",
+    schema={
+        "type": "choice",
+        "options": {
+            "yes": "clean, simple, non-distracting background",
+            "no": "cluttered, distracting, or inappropriate background",
+        },
+    },
 )
-
-if sharpness.choice == "sharp" and background.choice == "isolated":
-    approve_listing()
-else:
-    flag_for_seller_reupload()
 ```
 
-## 2. Two-Tier VLM Cost Gating
+## Review routing
 
-Rather than paying $0.005 per query for GPT-4o across 100,000 queries/day ($500/day):
-1. **Tier 1 (ImageJev)**: Runs on GPU in < 15ms. Cost: $0.000008/call.
-2. If `confidence >= 0.85`, use the ImageJev decision immediately.
-3. If `confidence < 0.85` (borderline ambiguity), route the query to Tier 2 (GPT-4o or Claude 3.5 Sonnet).
+Confidence can help route work, but choose a threshold with examples from your own data:
 
-**Result**: 85% to 92% of queries exit at Tier 1, slashing overall vision infrastructure costs by 80–90%.
+```python
+if result.confidence >= 0.85 and result.choice != "other":
+    continue_workflow()
+else:
+    send_to_review()
+```
+
+## Keep expectations clear
+
+- Results are structured, but they are not a guarantee of correctness.
+- Include an `other` option when images can fall outside the question.
+- Validate thresholds on representative examples from your task.
+- Do not use the examples here as accuracy or cost guarantees.

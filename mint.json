@@ -31,33 +31,16 @@
       "pages": [
         "introduction",
         "quickstart",
-        "coding-agents",
         "use-cases"
       ]
     },
     {
-      "group": "Concepts",
+      "group": "Decision types",
       "pages": [
-        "concepts/system-one",
-        "concepts/state",
-        {
-          "group": "Primitives",
-          "pages": [
-            "primitives/choice",
-            "primitives/score",
-            "primitives/noul"
-          ]
-        },
-        "concepts/confidence",
-        "concepts/how-to-build"
-      ]
-    },
-    {
-      "group": "Patterns",
-      "pages": [
-        "patterns/confidence-routing",
-        "patterns/fan-out",
-        "patterns/batching"
+        "primitives/choice",
+        "primitives/score",
+        "primitives/noul",
+        "concepts/confidence"
       ]
     }
   ]

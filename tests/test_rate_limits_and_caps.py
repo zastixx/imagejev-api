@@ -134,6 +134,23 @@ def test_api_key_auth_when_configured(monkeypatch):
         VALID_API_KEYS.clear()
 
 
+def test_protected_endpoint_auth_precedes_body_validation(monkeypatch):
+    """Missing credentials must return 401 even when the body is malformed."""
+    import imagejev.server as srv
+
+    client = TestClient(app)
+    monkeypatch.setattr(srv, "AUTH_REQUIRED", True)
+    VALID_API_KEYS.clear()
+    VALID_API_KEYS.add("sk-secret-test-key")
+
+    try:
+        response = client.post("/decide", json={})
+        assert response.status_code == 401
+        assert response.headers["WWW-Authenticate"] == "ApiKey"
+    finally:
+        VALID_API_KEYS.clear()
+
+
 def test_health_metrics_endpoint():
     """Verify health endpoint exposes limits and concurrency monitoring."""
     client = TestClient(app)
@@ -158,4 +175,3 @@ def test_ssrf_remote_url_blocked():
 
     with pytest.raises(ValueError, match="forbidden|blocked"):
         load_image_to_pil("http://localhost:3000/private.png")
-

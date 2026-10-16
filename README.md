@@ -97,11 +97,13 @@ OpenAPI documentation is available at `http://127.0.0.1:8000/docs`.
 Endpoints include `/health`, `/decide`, `/decide_upload`, `/decide_batch`, and
 `/v1/systemone` (also available as `/v1/decide`).
 
-Server settings are read from environment variables. Authentication is disabled
-unless `IMAGEJEV_API_KEYS` is configured; when configured, requests require the
-`X-API-Key` header. Configurable defaults include 60 single-decision requests per
-minute, 15 batch requests per minute, and 50 images per batch request. These are
-request limits, not measured throughput guarantees. Review access controls and
+Server settings are read from environment variables. Local development may run
+without authentication, but staging and production refuse to start unless
+`IMAGEJEV_API_KEYS` is configured. Protected decision endpoints require the
+`X-API-Key` header. Keep the keys in the deployment secret manager; never commit
+them to source control. Configurable defaults include 60 single-decision requests
+per minute, 15 batch requests per minute, and 50 images per batch request. These
+are request limits, not measured throughput guarantees. Review access controls and
 deployment configuration before exposing the server publicly.
 
 ## Remote Python client

@@ -6,7 +6,7 @@ Production-grade server featuring:
 - Strict batch size caps on /decide_batch.
 - Maximum question count cap on /v1/systemone.
 - Maximum image payload/upload size validation (HTTP 413).
-- Optional API key authentication via X-API-Key header.
+- API key authentication via X-API-Key header for protected deployments.
 - CORS configuration and production health monitoring.
 
 Run with:
@@ -36,9 +36,18 @@ try:
 
     # ── Configuration & Environment Variables ─────────────────────────────────────
 
-    # API Keys: If empty/unset, auth is disabled (dev mode). If set, X-API-Key is enforced.
+    # API keys are optional for local development, but production must fail closed
+    # rather than silently exposing the inference endpoints.
+    IMAGEJEV_ENV = os.getenv("IMAGEJEV_ENV", "development").strip().lower()
+    AUTH_REQUIRED = IMAGEJEV_ENV in {"production", "prod", "staging"}
     _RAW_API_KEYS = os.getenv("IMAGEJEV_API_KEYS", "").strip()
     VALID_API_KEYS: set[str] = set(k.strip() for k in _RAW_API_KEYS.split(",") if k.strip())
+
+    if AUTH_REQUIRED and not VALID_API_KEYS:
+        raise RuntimeError(
+            "IMAGEJEV_API_KEYS must be configured in production and staging; "
+            "refusing to start an unauthenticated API."
+        )
 
     # Rate Limiting configuration
     RATE_LIMIT_ENABLED = os.getenv("IMAGEJEV_RATE_LIMIT_ENABLED", "true").lower() in ("true", "1", "yes")
@@ -136,8 +145,11 @@ try:
             "Image-native structured decision engine: IMAGE + DECISION + SCHEMA -> structured decision.\n\n"
             "Features built-in per-IP rate limiting, batch size validation, and concurrency throttling."
         ),
-        docs_url="/docs",
-        redoc_url="/redoc",
+        # Keep interactive API discovery off the public surface in protected
+        # deployments. Health remains public for platform readiness checks.
+        docs_url=None if AUTH_REQUIRED else "/docs",
+        redoc_url=None if AUTH_REQUIRED else "/redoc",
+        openapi_url=None if AUTH_REQUIRED else "/openapi.json",
         lifespan=lifespan,
     )
 
@@ -152,11 +164,32 @@ try:
         allow_headers=["*"],
     )
 
+    _protected_paths = {
+        "/decide",
+        "/decide_batch",
+        "/decide_upload",
+        "/v1/decide",
+        "/v1/systemone",
+    }
+
+    @app.middleware("http")
+    async def authenticate_protected_requests(request: Request, call_next):
+        """Reject unauthenticated protected requests before body validation."""
+        if AUTH_REQUIRED and request.method != "OPTIONS" and request.url.path in _protected_paths:
+            api_key = request.headers.get("X-API-Key")
+            if not api_key or api_key.strip() not in VALID_API_KEYS:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Unauthorized. A valid 'X-API-Key' header is required."},
+                    headers={"WWW-Authenticate": "ApiKey"},
+                )
+        return await call_next(request)
+
     # ── Security & Rate Limit Helpers ─────────────────────────────────────────────
 
     def _verify_api_key_or_raise(x_api_key: Optional[str]) -> None:
-        """Enforce API key validation if VALID_API_KEYS is configured."""
-        if not VALID_API_KEYS:
+        """Enforce API key validation for protected deployments."""
+        if not AUTH_REQUIRED and not VALID_API_KEYS:
             return  # Open access / dev mode
         if not x_api_key or x_api_key.strip() not in VALID_API_KEYS:
             raise HTTPException(

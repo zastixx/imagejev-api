@@ -1,59 +1,59 @@
 ---
 title: "Introduction"
-description: "ImageJev is the image-native flagship model and the first System One vision model. Send pixels and typed questions; get structured answers your code can use directly."
+description: "Turn images and clear business rules into typed, reviewable results."
 ---
 
-> ## Documentation Index
-> Fetch the complete documentation index at: https://imagejev.mintlify.site/llms.txt
-> Use this file to discover all available pages before exploring further.
+# Visual decisions your code can use
 
-Vision-Language models (VLMs) are designed to produce text for humans to read. When you need a model to make a judgment that your software will consume, that creates a mismatch: you are coercing a slow text-generation system into outputting structured tokens, then parsing the results back into something your code can depend on.
+ImageJev helps software make focused decisions about images. Provide an image, a question, and the answers your workflow accepts. The SDK returns a structured result your code can inspect, store, or route for review.
 
-ImageJev is the flagship model and the first **System One Vision model**. System One models are built to make fast, structured decisions that software can use directly. ImageJev evaluates typed *questions* against an image or raw pixels and returns structured results directly. No token generation, no parsing. You get typed values and probability distributions that your code can branch on, sort by, and route with. Choice and Score also return **confidence**, which your code can use to decide whether and how to act on an answer.
+It is designed for focused visual checks such as:
+
+- Is this product photo suitable for a listing?
+- Which category best describes this image?
+- How clear or complete is this upload?
+- Should this item be sent to review?
 
 <CardGroup cols={2}>
   <Card title="Quick start" icon="rocket" href="/quickstart">
-    Install `imagejev` and make your first structured visual decision in minutes.
+    Install the Python SDK and make your first visual decision.
   </Card>
-  <Card title="Example use cases" icon="lightbulb" href="/use-cases">
-    See where ImageJev fits: catalog QA, document triage, moderation, and relevance gating.
+
+  <Card title="Use cases" icon="lightbulb" href="/use-cases">
+    See practical patterns for catalog checks, triage, and routing.
   </Card>
-  <Card title="Primitives (Questions)" icon="shapes" href="/primitives/choice">
-    Understand the three visual primitives: Choice, Score, and Noul.
+
+  <Card title="Decision types" icon="shapes" href="/primitives/choice">
+    Choose between Choice, Score, and Noul results.
   </Card>
-  <Card title="Jev with coding agents" icon="robot" href="/coding-agents">
-    Equip AI coding agents with instant, non-hallucinating vision function calls.
+
+  <Card title="Confidence" icon="chart-no-axes-combined" href="/concepts/confidence">
+    Use confidence as a review and routing signal.
   </Card>
 </CardGroup>
 
-## ImageJev primitives
+## Three decision types
 
-ImageJev exposes three *AI primitives*. Similar to software primitives, our AI primitives are modular, composable, structured, reliable, and fast. Each asks a different type of *question* and returns a different type of answer.
-
-| Question type | Goal | Returns |
+| Type | Use it for | Returns |
 | :--- | :--- | :--- |
-| [Choice](/primitives/choice) | Choose an option from a closed schema | `choice`, `probabilities`, `confidence` |
-| [Score](/primitives/score) | Score the image on an ordinal rubric | `score`, `probabilities`, `confidence` |
-| [Noul](/primitives/noul) | Is this statement true? (0 to 1) | `probability` |
+| [Choice](/primitives/choice) | Select one option from a defined list | `choice`, `probabilities`, `confidence` |
+| [Score](/primitives/score) | Rate an image against ordered levels | `score`, `probabilities`, `confidence`, `dispersion` |
+| [Noul](/primitives/noul) | Check one visual statement | `probability` |
 
-All three *question* types can be evaluated in high-throughput batches. Every question is evaluated in parallel and in isolation against the same image embedding in one matrix multiply. Adding questions barely changes the response time.
+## Keep questions focused
 
-## Atomic questions, composed in code
+Use one clear question at a time. If a workflow depends on several independent checks, ask them separately and combine the results in your own application logic.
 
-System One models work best when each question asks one specific, well-scoped visual determination: the kind of judgment a knowledgeable person could make in a fraction of a second given the image.
+## Important limitations
 
-If the judgment you want to make would weigh multiple independent visual factors, decompose it. Ask each factor as a separate question, then combine the results with business logic in your code. This keeps each evaluation reliable, fast (< 15ms on GPU), and gives you full control over how dimensions are weighted.
+Structured output does not guarantee a correct prediction. A defined list of options can still produce a confident but incorrect result when an image is unclear or outside the question. Include an explicit `other` option or use `allow_none` when out-of-scope images are possible, and validate thresholds on data from your task.
 
-For example, instead of *"rate this product listing"*, ask separately about:
-1. Sharpness & focus
-2. Studio lighting vs amateur snap
-3. White background presence
-
-Combine the scores with your own formula. When business criteria change, update a coefficient in your code rather than rewriting a prompt.
+The interactive demo on the product website is illustrative and does not call a live inference service.
 
 ## Next steps
 
-- [Quick Start](/quickstart) — Everything you need to get started immediately.
-- [Primitives (Questions)](/primitives/choice) — How to define schemas, choose between Choice, Score, and Noul.
-- [Confidence](/concepts/confidence) — How ImageJev reports mathematical certainty, and how to use it architecturally.
-- [Two-Tier Gating](/patterns/confidence-routing) — Patterns for saving 85%+ cost by gating routine queries before VLMs.
+- [Quick start](/quickstart)
+- [Choice](/primitives/choice)
+- [Score](/primitives/score)
+- [Noul](/primitives/noul)
+- [Confidence](/concepts/confidence)

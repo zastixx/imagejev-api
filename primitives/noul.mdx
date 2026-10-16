@@ -1,45 +1,37 @@
 ---
-title: "Noul Primitive"
-description: "Binary truth verification: test visual hypotheses with calibrated probabilities between 0.0 and 1.0."
+title: "Noul"
+description: "Check whether one visual statement applies to an image."
 ---
 
-# Noul Primitive
+# Noul
 
-The `noul` primitive tests whether a single affirmative statement holds true for an image, returning a calibrated truth probability between `0.0` and `1.0`.
-
-## Schema Definition
-
-```python
-schema = {
-    "type": "noul",
-    "hypothesis": "Affirmative visual claim being verified"
-}
-```
-
-## Example Usage
+Use `noul` for a focused yes-or-no visual check.
 
 ```python
 from imagejev import ImageJev
 
 jev = ImageJev()
-
 result = jev.decide(
     image="document.jpg",
-    decision="Verify signature",
+    decision="Is a signature visible?",
     schema={
         "type": "noul",
-        "hypothesis": "There is a handwritten signature visible at the bottom of the page"
-    }
+        "true": "a visible handwritten signature",
+        "false": "no visible handwritten signature",
+    },
 )
 
-print(result.value)
-# -> True (if probability >= 0.5)
-
 print(result.probability)
-# -> 0.984
 ```
 
-## Ideal Use Cases
-- Fast binary gates: *"Does this photo contain a watermark?"*
-- Feature presence detection: *"Is the subject wearing sunglasses?"*
-- Safety filters: *"Is there visible text in this meme?"*
+## Good uses
+
+- Is a watermark visible?
+- Is the subject wearing a helmet?
+- Is the image suitable for the next workflow step?
+
+## Tips
+
+- Ask one focused question.
+- Describe both sides clearly with `true` and `false`.
+- Choose an action threshold using examples from your task.
