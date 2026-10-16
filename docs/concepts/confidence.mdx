@@ -1,39 +1,44 @@
 ---
-title: "Mathematical Confidence"
-description: "Understanding entropy, margin, and calibrated certainty in ImageJev results."
+title: "Confidence"
+description: "Use confidence as a review and routing signal."
 ---
 
-# Mathematical Confidence
+# Confidence
 
-Every `choice` and `score` evaluation in ImageJev yields a `confidence` metric normalized between `0.0` and `1.0`.
+`choice` and `score` results include a `confidence` value between `0.0` and `1.0`.
 
-## How Confidence is Computed
-
-For an evaluation with $K$ options and softmax probability vector $P = [p_1, p_2, \dots, p_K]$:
-
-1. **Shannon Entropy**:
-   $$H(P) = -\sum_{i=1}^K p_i \ln(p_i)$$
-
-2. **Normalized Entropy**:
-   $$H_{\text{norm}}(P) = \frac{H(P)}{\ln(K)}$$
-
-3. **Confidence**:
-   $$\text{confidence} = 1 - H_{\text{norm}}(P)$$
-
-When one option dominates completely ($p_1 \approx 1.0$), $H(P) \to 0$ and `confidence` approaches `1.0`.
-When all options are equally likely ($p_i = 1/K$), $H(P) = \ln(K)$ and `confidence` drops to `0.0`.
-
-## Architecture Application: The Confidence Gate
-
-Use confidence as an architectural threshold:
+Confidence is useful for deciding whether to automate a result or send it for review. It is not a guarantee that the result is correct.
 
 ```python
-result = jev.decide(image=img, decision=query, schema=schema)
+result = jev.decide(
+    image="photo.jpg",
+    decision="Is this upload ready?",
+    schema={
+        "type": "choice",
+        "options": {
+            "ready": "clear and complete upload",
+            "review": "unclear or incomplete upload",
+            "other": "not an applicable upload",
+        },
+    },
+)
 
-if result.confidence >= 0.80:
-    # High certainty: execute automated action
-    handle_decision(result.choice)
+if result.confidence >= 0.85 and result.choice == "ready":
+    continue_workflow()
 else:
-    # Low certainty: route to human review queue or fallback VLM
-    route_to_fallback(img, query)
+    send_to_review()
 ```
+
+## Choosing a threshold
+
+There is no universal threshold. Use representative examples from your workflow and measure:
+
+- How often the result is correct.
+- How many cases can be automated.
+- How many uncertain cases reach review.
+
+## Practical guidance
+
+- Keep an `other` option when an image may be out of scope.
+- Use `allow_none` when abstention is preferable to a forced choice.
+- Revisit thresholds when your images or business rules change.

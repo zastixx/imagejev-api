@@ -5,62 +5,84 @@ description: "Install the ImageJev Python SDK and make your first structured vis
 
 # Quick start
 
-Begin with the fastest path to running ImageJev in your codebase.
+## Requirements
 
-## Prerequisites
+- Python 3.9 or newer
+- An image available as a local path, URL, PIL image, or bytes
 
-Before you begin, ensure you have:
-- Python 3.9 or higher
-- PyTorch environment (supports CPU, Apple Silicon MPS, or NVIDIA CUDA)
-
-## Installation
-
-Install the package using pip:
+## Install
 
 ```bash
-# Core SDK
-pip install imagejev
-
-# With FastAPI production server
-pip install "imagejev[server]"
-
-# Full bundle with benchmarks
-pip install "imagejev[all]"
+pip install imagejev==0.1.2
 ```
 
-## Make your first decision
+For the optional FastAPI server:
 
-Initialize `ImageJev` and call `.decide()` with an image and a closed schema:
+```bash
+pip install "imagejev[server]"
+```
+
+## Make a decision
 
 ```python
 from imagejev import ImageJev
 
-# 1. Initialize engine
 jev = ImageJev()
 
-# 2. Make a structured decision
 result = jev.decide(
-    image="https://images.unsplash.com/photo-1542291026-7eec264c27ff",
-    decision="Is this photo suitable for e-commerce listing?",
+    image="product-photo.jpg",
+    decision="Is this photo suitable for an e-commerce listing?",
     schema={
         "type": "choice",
         "options": {
-            "yes": "clean, well-lit, professional in-focus product photo",
-            "no": "blurry, dark, low-resolution, damaged, or cluttered photo"
-        }
-    }
+            "usable": "a clear, well-lit, focused product photo",
+            "unusable": "a blurry, dark, damaged, cluttered, or irrelevant photo",
+            "other": "an image that does not clearly fit either option",
+        },
+        "allow_none": True,
+        "relevance_threshold": 0.20,
+    },
 )
 
-print(result.choice)        # -> "yes"
-print(result.confidence)    # -> 0.994
-print(result.probabilities) # -> {"yes": 0.994, "no": 0.006}
+print(result.choice)
+print(result.confidence)
+print(result.probabilities)
 ```
 
-## How it works
+## Use the result
 
-Unlike autoregressive VLMs (e.g. GPT-4o, Claude Sonnet) which stream hundreds of tokens to answer a visual question, ImageJev embeds the image using frozen CLIP encoders and computes calibrated cosine similarity across textual decision vectors.
+Treat the result as a signal for your application. For example:
 
-This provides:
-- **Zero hallucinations**: 100% adherence to your defined schema options.
-- **Microsecond inference**: < 15ms on modern GPUs, ~120ms on modern CPUs.
-- **Calibrated confidence**: Continuous certainty metric calculated from softmax entropy.
+```python
+if result.choice == "usable" and result.confidence >= 0.85:
+    approve_listing()
+else:
+    send_to_review()
+```
+
+Choose the threshold using examples from your own workflow. Confidence is not a guarantee of correctness.
+
+## Batch decisions
+
+```python
+results = jev.decide_batch(
+    images=["one.jpg", "two.jpg"],
+    decision="Classify this upload",
+    schema={
+        "type": "choice",
+        "options": {
+            "usable": "a clear, focused upload",
+            "unusable": "a blurry or damaged upload",
+            "other": "not an applicable upload",
+        },
+    },
+)
+```
+
+## Next steps
+
+- [Choice](/primitives/choice)
+- [Score](/primitives/score)
+- [Noul](/primitives/noul)
+- [Confidence](/concepts/confidence)
+- [Example use cases](/use-cases)
