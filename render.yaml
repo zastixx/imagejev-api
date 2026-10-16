@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: standard # 2GB RAM required for CLIP weights
     region: oregon
-    buildCommand: pip install -r requirements-render.txt && pip install .
+    buildCommand: pip install .[server]
     startCommand: uvicorn imagejev.server:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /health
     autoDeploy: true

@@ -13,7 +13,7 @@ TEST_IMAGES_DIR = ROOT_DIR / "test_images"
 def test_mock_backend_open_set():
     """Test open-set schema behavior on MockBackend."""
     engine = ImageJev(backend=MockBackend())
-    
+
     # In-domain match
     schema = {
         "type": "choice",
@@ -32,7 +32,7 @@ def test_real_open_set_ood_rejection():
     dog_path = TEST_IMAGES_DIR / "golden_retriever.jpg"
     car_path = TEST_IMAGES_DIR / "sports_car.jpg"
     pizza_path = TEST_IMAGES_DIR / "pizza.jpg"
-    
+
     if not dog_path.is_file() or not car_path.is_file():
         pytest.skip("Test images not found")
 
@@ -92,7 +92,7 @@ def test_real_open_set_batch():
 
     results = engine.decide_batch([dog_path, car_path, mug_path], "Which pet?", pet_schema_open)
     assert len(results) == 3
-    
+
     # Dog -> matched
     assert results[0].choice == "dog"
     assert results[0].is_relevant is True

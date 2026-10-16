@@ -29,9 +29,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[all]"
 
-    - name: Run unit test suite (Mock Backend)
+    - name: Run deterministic test suite
       run: |
-        pytest tests/test_mock_engine.py tests/test_server.py -v
+        pytest tests/test_batch.py tests/test_client.py tests/test_import_origin.py tests/test_mock_engine.py tests/test_open_set_relevance.py tests/test_rate_limits_and_caps.py tests/test_server.py -v
 
     - name: Type check with mypy
       run: |
