@@ -1,0 +1,214 @@
+---
+title: "Single Decision (/decide)"
+description: "Evaluate a single image against a Choice, Score, or Noul schema."
+api: "POST /decide"
+---
+
+# Make a Decision (`POST /decide`)
+
+Evaluates a single visual input against a structured decision schema and returns typed probabilities and confidence metrics.
+
+## Request
+
+### Headers
+
+| Header | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `Content-Type` | `string` | **Yes** | Must be `application/json`. |
+| `X-API-Key` | `string` | Conditional | Required when operating in `production` or `staging` environments. |
+
+### Body Parameters
+
+| Parameter | Type | Required | Constraints | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `image` | `string` | **Yes** | Max 10MB | Public image URL (`https://...`), Base64 string, or data URI (`data:image/jpeg;base64,...`). |
+| `decision` | `string` | **Yes** | Max 1,000 chars | The visual question or statement to evaluate against the image. |
+| `schema` | `object` | **Yes** | Valid schema | Choice, Score, or Noul schema definition. |
+
+---
+
+## Schema Formats
+
+### 1. Choice Schema
+Selects the winning category from two or more descriptive options.
+
+```json
+{
+  "type": "choice",
+  "options": {
+    "electronics": "a smartphone, laptop, camera, or gadget",
+    "apparel": "clothing, shoes, bags, or garments",
+    "home": "furniture, decor, kitchenware, or lighting",
+    "other": "an item that does not match the categories above"
+  },
+  "allow_none": false,
+  "relevance_threshold": 0.20
+}
+```
+
+### 2. Score Schema
+Evaluates an image on an ordered scale (2 to 10 criteria levels) and computes continuous expectation and dispersion.
+
+```json
+{
+  "type": "score",
+  "levels": [
+    "dark, blurry, out-of-focus, or heavily distorted",
+    "acceptable clarity but sub-optimal lighting or slight motion blur",
+    "sharp, well-lit, clear product details",
+    "studio-grade professional lighting, perfect isolation and sharpness"
+  ]
+}
+```
+
+### 3. Noul Schema
+Evaluates the binary truth probability of an affirmative hypothesis.
+
+```json
+{
+  "type": "noul",
+  "true": "a clearly visible handwritten signature is present",
+  "false": "no signature or writing is visible"
+}
+```
+
+---
+
+## Code Examples
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.imagejev.dev/decide" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+    "decision": "Identify the primary item in this photo",
+    "schema": {
+      "type": "choice",
+      "options": {
+        "sneaker": "athletic running shoe or sneaker",
+        "apparel": "t-shirt, jacket, or pants",
+        "accessory": "watch, sunglasses, or hat",
+        "other": "none of the above"
+      }
+    }
+  }'
+```
+
+```python Python (SDK)
+from imagejev import ImageJevClient
+
+client = ImageJevClient(base_url="https://api.imagejev.dev", api_key="YOUR_API_KEY")
+
+result = client.decide(
+    image="https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+    decision="Identify the primary item in this photo",
+    schema={
+        "type": "choice",
+        "options": {
+            "sneaker": "athletic running shoe or sneaker",
+            "apparel": "t-shirt, jacket, or pants",
+            "accessory": "watch, sunglasses, or hat",
+            "other": "none of the above"
+        }
+    }
+)
+
+print(result.choice)        # -> "sneaker"
+print(result.confidence)    # -> 0.985
+print(result.probabilities) # -> {"sneaker": 0.985, "apparel": 0.008, ...}
+```
+
+```typescript TypeScript / Fetch
+const response = await fetch("https://api.imagejev.dev/decide", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+    decision: "Identify the primary item in this photo",
+    schema: {
+      type: "choice",
+      options: {
+        sneaker: "athletic running shoe or sneaker",
+        apparel: "t-shirt, jacket, or pants",
+        accessory: "watch, sunglasses, or hat",
+        other: "none of the above"
+      }
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data.choice, data.confidence);
+```
+</CodeGroup>
+
+---
+
+## Responses
+
+### Choice Response (`200 OK`)
+
+```json
+{
+  "choice": "sneaker",
+  "probability": 0.9852,
+  "confidence": 0.9803,
+  "is_relevant": true,
+  "relevance": 0.3241,
+  "probabilities": {
+    "sneaker": 0.9852,
+    "apparel": 0.0081,
+    "accessory": 0.0043,
+    "other": 0.0024
+  }
+}
+```
+
+### Score Response (`200 OK`)
+
+```json
+{
+  "score": 3.82,
+  "probability": 0.841,
+  "confidence": 0.912,
+  "dispersion": 0.045,
+  "legend": {
+    "0": "dark, blurry, out-of-focus, or heavily distorted",
+    "1": "acceptable clarity but sub-optimal lighting or slight motion blur",
+    "2": "sharp, well-lit, clear product details",
+    "3": "studio-grade professional lighting, perfect isolation and sharpness"
+  },
+  "probabilities": {
+    "0": 0.001,
+    "1": 0.021,
+    "2": 0.137,
+    "3": 0.841
+  }
+}
+```
+
+### Noul Response (`200 OK`)
+
+```json
+{
+  "probability": 0.9942
+}
+```
+
+### Response Attributes
+
+| Field | Type | Schemas | Description |
+| :--- | :--- | :--- | :--- |
+| `choice` | `string \| null` | Choice | The winning option key (or `null` if out-of-domain and `allow_none=True`). |
+| `probability` | `float` | Choice, Score, Noul | Primary probability score ($0.0$ to $1.0$). |
+| `confidence` | `float` | Choice, Score | Mathematical certainty margin ($1.0 - \text{normalized entropy}$). |
+| `is_relevant` | `boolean` | Choice | True if the highest embedding cosine similarity exceeds `relevance_threshold`. |
+| `relevance` | `float` | Choice | Max raw cosine similarity score against in-domain candidate texts. |
+| `score` | `float` | Score | Continuous weighted expectation index across ordinal levels ($0.0$ to $N-1$). |
+| `dispersion` | `float` | Score | Probability mass outside the peak level and its immediate neighbors. High dispersion signals bimodal ambiguity. |
+| `probabilities` | `object` | Choice, Score | Full normalized probability distribution. |

@@ -1,0 +1,104 @@
+---
+title: "Multipart File Upload (/decide_upload)"
+description: "Directly stream raw image files (JPEG, PNG, WebP) from browsers, mobile devices, or backend services."
+api: "POST /decide_upload"
+---
+
+# Multipart File Upload (`POST /decide_upload`)
+
+Allows clients to upload raw image binaries directly without requiring prior Base64 encoding or public S3/GCS hosting. Ideal for browser file inputs, mobile uploads, and local inspection scripts.
+
+## Request
+
+### Headers
+
+| Header | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `Content-Type` | `string` | **Yes** | Must be `multipart/form-data`. |
+| `X-API-Key` | `string` | Conditional | Required when operating in `production` or `staging` environments. |
+
+### Form Data Parameters
+
+| Field | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `file` | `binary` | **Yes** | — | Raw image file bytes (supports JPEG, PNG, WebP). Maximum payload: 10MB. |
+| `decision` | `string` | No | `"Is this product suitable for listing?"` | The plain-language visual question or statement. |
+| `schema` | `string (JSON)` | No | *Default binary choice* | Stringified JSON object defining the Choice, Score, or Noul schema. |
+
+---
+
+## Code Examples
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.imagejev.dev/decide_upload" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -F "file=@/path/to/local_receipt.jpg" \
+  -F "decision=Is this image an expense receipt or invoice?" \
+  -F 'schema={"type": "choice", "options": {"receipt": "printed paper receipt or bill", "other": "random document, photo, or object"}}'
+```
+
+```python Python (requests)
+import requests
+
+url = "https://api.imagejev.dev/decide_upload"
+headers = {"X-API-Key": "YOUR_API_KEY"}
+
+with open("local_photo.jpg", "rb") as f:
+    files = {"file": ("photo.jpg", f, "image/jpeg")}
+    data = {
+        "decision": "Rate visual clarity and sharpness",
+        "schema": '{"type": "score", "levels": ["blurry", "fair", "sharp", "studio"]}'
+    }
+    response = requests.post(url, headers=headers, files=files, data=data)
+
+print(response.json())
+```
+
+```typescript HTML / Browser Fetch
+const formData = new FormData();
+formData.append("file", fileInputElement.files[0]);
+formData.append("decision", "Is this image an expense receipt?");
+formData.append("schema", JSON.stringify({
+  type: "choice",
+  options: {
+    receipt: "printed paper receipt or bill",
+    other: "random document or photo"
+  }
+}));
+
+const response = await fetch("https://api.imagejev.dev/decide_upload", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "YOUR_API_KEY"
+  },
+  body: formData
+});
+
+const data = await response.json();
+console.log(data.choice, data.confidence);
+```
+</CodeGroup>
+
+---
+
+## Response (`200 OK`)
+
+```json
+{
+  "choice": "receipt",
+  "probability": 0.9912,
+  "confidence": 0.9824,
+  "is_relevant": true,
+  "relevance": 0.341,
+  "probabilities": {
+    "receipt": 0.9912,
+    "other": 0.0088
+  }
+}
+```
+
+## Error Handling
+
+- **HTTP 413 Payload Too Large**: Returned if the uploaded file exceeds `MAX_IMAGE_BYTES` (default 10MB).
+- **HTTP 422 Unprocessable Entity**: Returned if the `schema` form field is not valid JSON or violates schema constraints.

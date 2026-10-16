@@ -1,0 +1,142 @@
+---
+title: "API Overview"
+description: "Architecture, authentication, base URLs, rate limits, and error handling for the ImageJev REST API."
+---
+
+# ImageJev REST API
+
+The ImageJev REST API provides low-latency, deterministic visual decision endpoints powered by System One vision architecture. Instead of generating autoregressive tokens, ImageJev evaluates typed decision schemas directly against frozen visual embeddings in a single forward pass.
+
+## Base URLs
+
+| Environment | Base URL | Description |
+| :--- | :--- | :--- |
+| **Local Development** | `http://localhost:8000` | Default local uvicorn / container port |
+| **Hosted Production** | `https://api.imagejev.dev` | Managed global inference gateway |
+| **Custom Deployment** | `https://your-domain.com` | Your self-hosted Render, Modal, or Kubernetes cluster |
+
+All endpoints use HTTP/1.1 or HTTP/2 over TLS (in production) and serve JSON payloads with UTF-8 encoding.
+
+---
+
+## Authentication
+
+When `IMAGEJEV_ENV` is set to `production` or `staging`, all inference endpoints require authentication using an API key passed via the `X-API-Key` HTTP header.
+
+```http
+X-API-Key: YOUR_API_KEY
+```
+
+<Warning>
+Do not expose your API key in client-side code (such as browser single-page apps or mobile binaries). Use a server-side proxy or backend service to issue requests to protected ImageJev endpoints.
+</Warning>
+
+### Unauthenticated Endpoints
+
+The `/health` endpoint is publicly accessible without credentials to enable platform liveness and readiness checks (e.g., Kubernetes, Render, AWS ECS).
+
+---
+
+## Rate Limiting & Concurrency
+
+ImageJev protects inference engines using a dual-layer defensive architecture:
+
+### 1. Sliding-Window Rate Limiter
+Requests are throttled on a per-minute sliding window per client. In authenticated environments, rate limits are tracked by API key (`key:<api_key>`). In open environments, limits are tracked by client IP (`ip:<client_ip>`).
+
+When a rate limit is exceeded, the server responds with **HTTP 429 Too Many Requests** and returns standard rate limit headers:
+
+| Header | Description |
+| :--- | :--- |
+| `Retry-After` | Number of seconds to wait before retrying |
+| `X-RateLimit-Limit` | Maximum permitted requests per minute |
+| `X-RateLimit-Remaining` | Remaining requests available in the active window (`0` when limited) |
+| `X-RateLimit-Reset` | Seconds until the current rate limit window resets |
+
+### 2. Concurrency Bounding Gate
+To prevent thread thrashing and memory spikes during high-concurrency traffic, requests pass through a hardware-aware concurrency gate (default: 4 concurrent workers). Requests that cannot acquire an execution slot within the timeout (default: 30s) return **HTTP 503 Service Unavailable**.
+
+---
+
+## Standard Error Response Format
+
+All error responses return a structured JSON body with a standard `detail` field:
+
+```json
+{
+  "detail": "Descriptive message identifying the validation or runtime failure."
+}
+```
+
+For rate limit violations (HTTP 429), the response includes structured retry metadata:
+
+```json
+{
+  "detail": {
+    "error": "rate_limit_exceeded",
+    "message": "Too many requests. Limit is 60 req/min. Please retry after 14s.",
+    "retry_after": 14
+  }
+}
+```
+
+### HTTP Status Codes
+
+| Code | Status | Description |
+| :--- | :--- | :--- |
+| **200** | OK | Decision successfully computed. |
+| **400** | Bad Request | Request payload violated constraints (e.g., empty image array, question count > 25, batch size > 50). |
+| **401** | Unauthorized | Missing, empty, or invalid `X-API-Key` header on a protected endpoint. |
+| **413** | Payload Too Large | Image binary or Base64 payload exceeds the configured limit (default: 10MB). |
+| **422** | Unprocessable Entity | Invalid schema structure (e.g., choice with < 2 options, score with < 2 levels, malformed JSON). |
+| **429** | Too Many Requests | Client has exceeded their per-minute rate limit allocation. |
+| **500** | Internal Error | Unhandled server error during decision execution. |
+| **503** | Service Unavailable | Concurrency capacity saturated. The client should retry with exponential backoff. |
+
+---
+
+## SDK vs Direct REST
+
+While you can interact directly with the REST API using any HTTP client, the official Python SDK provides connection pooling, automatic Base64 encoding, typed return objects (`ChoiceResult`, `ScoreResult`, `NoulResult`), and error handling:
+
+<CodeGroup>
+```python Python SDK
+from imagejev import ImageJevClient
+
+client = ImageJevClient(
+    base_url="https://api.imagejev.dev",
+    api_key="your_api_key",
+    timeout=10.0
+)
+
+result = client.decide(
+    image="https://example.com/item.jpg",
+    decision="Is this photo in focus?",
+    schema={
+        "type": "choice",
+        "options": {
+            "sharp": "crisp, well-focused subject",
+            "blurry": "motion blur, out of focus, or degraded"
+        }
+    }
+)
+print(result.choice, result.confidence)
+```
+
+```bash cURL
+curl -X POST "https://api.imagejev.dev/decide" \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image": "https://example.com/item.jpg",
+    "decision": "Is this photo in focus?",
+    "schema": {
+      "type": "choice",
+      "options": {
+        "sharp": "crisp, well-focused subject",
+        "blurry": "motion blur, out of focus, or degraded"
+      }
+    }
+  }'
+```
+</CodeGroup>

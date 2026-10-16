@@ -42,6 +42,17 @@
         "primitives/noul",
         "concepts/confidence"
       ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/overview",
+        "api-reference/decide",
+        "api-reference/decide-batch",
+        "api-reference/decide-upload",
+        "api-reference/systemone",
+        "api-reference/health"
+      ]
     }
   ]
 }

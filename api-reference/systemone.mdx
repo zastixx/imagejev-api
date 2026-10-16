@@ -1,0 +1,214 @@
+---
+title: "Multi-Question Fan-Out (/v1/systemone)"
+description: "Evaluate up to 25 independent visual determinations on a single image embedding in one forward pass."
+api: "POST /v1/systemone"
+---
+
+# Multi-Question Fan-Out (`POST /v1/systemone`)
+
+Evaluates multiple distinct visual questions against an image in a **single forward pass**.
+
+### Architecture: Single Image Embedding, Parallel Projections
+
+In autoregressive models (VLMs), answering 5 questions requires running 5 independent token generation passes or concatenating large prompts that compete for attention. 
+
+ImageJev embeds the image **once** into vector space ($D=512$ or $768$). All question criteria vectors are then multiplied against this single embedding simultaneously. Evaluating 10 questions takes virtually the same GPU time (~15ms) as evaluating 1.
+
+<Note>
+This endpoint is also accessible via the alias `POST /v1/decide`.
+</Note>
+
+---
+
+## Request
+
+### Headers
+
+| Header | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `Content-Type` | `string` | **Yes** | Must be `application/json`. |
+| `X-API-Key` | `string` | Conditional | Required when operating in `production` or `staging` environments. |
+
+### Body Parameters
+
+| Parameter | Type | Required | Constraints | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `image` | `string` | **Yes** | Max 10MB | Public image URL (`https://...`), Base64 string, or data URI. |
+| `questions` | `object` | **Yes** | 1 to 25 questions | Dictionary mapping unique string identifiers to question definitions. |
+
+Each entry in `questions` must contain:
+- `decision` (`string`): The plain-language prompt or question.
+- `schema` (`object`): Choice, Score, or Noul definition.
+
+---
+
+## Code Examples
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.imagejev.dev/v1/systemone" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+    "questions": {
+      "item_category": {
+        "decision": "Identify the primary merchandise category",
+        "schema": {
+          "type": "choice",
+          "options": {
+            "footwear": "shoes, sneakers, boots, or sandals",
+            "apparel": "shirts, pants, jackets, or clothing",
+            "accessories": "jewelry, hats, bags, or belts"
+          }
+        }
+      },
+      "lighting_quality": {
+        "decision": "Rate studio lighting quality",
+        "schema": {
+          "type": "score",
+          "levels": [
+            "dark or underexposed",
+            "uneven harsh shadows",
+            "clear ambient lighting",
+            "flawless studio balanced exposure"
+          ]
+        }
+      },
+      "has_watermark": {
+        "decision": "Is there a watermark or copyright text overlay?",
+        "schema": {
+          "type": "noul",
+          "true": "visible translucent watermark, logo stamp, or copyright text",
+          "false": "clean photo with no watermark or text stamps"
+        }
+      }
+    }
+  }'
+```
+
+```python Python (SDK)
+from imagejev import ImageJevClient
+
+client = ImageJevClient(base_url="https://api.imagejev.dev", api_key="YOUR_API_KEY")
+
+result = client.decide_multi(
+    image="https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+    questions={
+        "item_category": {
+            "decision": "Identify the primary merchandise category",
+            "schema": {
+                "type": "choice",
+                "options": {
+                    "footwear": "shoes, sneakers, boots, or sandals",
+                    "apparel": "shirts, pants, jackets, or clothing",
+                    "accessories": "jewelry, hats, bags, or belts"
+                }
+            }
+        },
+        "lighting_quality": {
+            "decision": "Rate studio lighting quality",
+            "schema": {
+                "type": "score",
+                "levels": [
+                    "dark or underexposed",
+                    "uneven harsh shadows",
+                    "clear ambient lighting",
+                    "flawless studio balanced exposure"
+                ]
+            }
+        },
+        "has_watermark": {
+            "decision": "Is there a watermark or copyright text overlay?",
+            "schema": {
+                "type": "noul",
+                "true": "visible translucent watermark, logo stamp, or copyright text",
+                "false": "clean photo with no watermark or text stamps"
+            }
+        }
+    }
+)
+
+print(result["item_category"].choice)         # -> "footwear"
+print(result["lighting_quality"].score)       # -> 3.84
+print(result["has_watermark"].probability)    # -> 0.012 (no watermark)
+```
+
+```typescript TypeScript / Fetch
+const response = await fetch("https://api.imagejev.dev/v1/systemone", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+    questions: {
+      item_category: {
+        decision: "Identify product category",
+        schema: {
+          type: "choice",
+          options: {
+            footwear: "shoes, sneakers, or boots",
+            apparel: "clothing or garments"
+          }
+        }
+      }
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data.answers.item_category);
+```
+</CodeGroup>
+
+---
+
+## Response (`200 OK`)
+
+The response wraps all evaluated questions under the top-level `answers` dictionary, keyed by your question identifiers:
+
+```json
+{
+  "answers": {
+    "item_category": {
+      "choice": "footwear",
+      "probability": 0.9921,
+      "confidence": 0.9842,
+      "is_relevant": true,
+      "relevance": 0.334,
+      "probabilities": {
+        "footwear": 0.9921,
+        "apparel": 0.0051,
+        "accessories": 0.0028
+      }
+    },
+    "lighting_quality": {
+      "score": 3.84,
+      "probability": 0.881,
+      "confidence": 0.932,
+      "dispersion": 0.038,
+      "legend": {
+        "0": "dark or underexposed",
+        "1": "uneven harsh shadows",
+        "2": "clear ambient lighting",
+        "3": "flawless studio balanced exposure"
+      },
+      "probabilities": {
+        "0": 0.001,
+        "1": 0.012,
+        "2": 0.106,
+        "3": 0.881
+      }
+    },
+    "has_watermark": {
+      "probability": 0.0124
+    }
+  }
+}
+```
+
+## Constraints
+
+- **Maximum question count**: `25` questions per request. Exceeding 25 questions returns `HTTP 400 Bad Request`.
