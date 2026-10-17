@@ -3,58 +3,68 @@ title: "Introduction"
 description: "Turn images and clear business rules into typed, reviewable results."
 ---
 
-# Visual decisions your code can use
+ImageJev helps software make focused decisions about images. You provide an image, a question, and the answers your workflow accepts. ImageJev returns a structured result that your code can inspect, store, or route for review.
 
-ImageJev helps software make focused decisions about images. Provide an image, a question, and the answers your workflow accepts. The SDK returns a structured result your code can inspect, store, or route for review.
+```mermaid
+flowchart LR
+    A["Image"] --> D["ImageJev"]
+    B["Question"] --> D
+    C["Allowed answers"] --> D
+    D --> E["Typed result"]
+    E --> F{"Your rules"}
+    F -->|"Confident"| G["Continue automatically"]
+    F -->|"Uncertain"| H["Send to review"]
+```
 
-It is designed for focused visual checks such as:
+## What you can check
+
+ImageJev is designed for focused visual checks, such as:
 
 - Is this product photo suitable for a listing?
 - Which category best describes this image?
 - How clear or complete is this upload?
 - Should this item be sent to review?
 
-<CardGroup cols={2}>
-  <Card title="Quick start" icon="rocket" href="/quickstart">
-    Send your first visual decision via the Cloud REST API in under 60 seconds.
-  </Card>
-
-  <Card title="Use cases" icon="lightbulb" href="/use-cases">
-    See practical patterns for catalog checks, triage, and routing.
-  </Card>
-
-  <Card title="Decision types" icon="shapes" href="/primitives/choice">
-    Choose between Choice, Score, and Noul results.
-  </Card>
-
-  <Card title="Confidence" icon="chart-no-axes-combined" href="/concepts/confidence">
-    Use confidence as a review and routing signal.
-  </Card>
-</CardGroup>
-
 ## Three decision types
 
+Every request uses one of three decision types. Pick the one that matches the answer your workflow needs.
+
 | Type | Use it for | Returns |
-| :--- | :--- | :--- |
+| --- | --- | --- |
 | [Choice](/primitives/choice) | Select one option from a defined list | `choice`, `probabilities`, `confidence` |
 | [Score](/primitives/score) | Rate an image against ordered levels | `score`, `probabilities`, `confidence`, `dispersion` |
-| [Noul](/primitives/noul) | Check one visual statement | `probability` |
+| [Noul](/primitives/noul) | Check one visual statement (yes or no) | `probability` |
 
 ## Keep questions focused
 
-Use one clear question at a time. If a workflow depends on several independent checks, ask them separately and combine the results in your own application logic.
+Ask one clear question at a time. If a workflow depends on several independent checks, ask them separately and combine the results in your own application logic. See [Example use cases](/use-cases) for a worked pattern.
 
 ## Important limitations
 
-Structured output does not guarantee a correct prediction. A defined list of options can still produce a confident but incorrect result when an image is unclear or outside the question. Include an explicit `other` option or use `allow_none` when out-of-scope images are possible, and validate thresholds on data from your task.
+<Warning>
+  Structured output does not guarantee a correct prediction. A defined list of options can still produce a confident but incorrect result when an image is unclear or outside the question.
+</Warning>
 
-The interactive demo on the product website is illustrative and does not call a live inference service.
+- Include an explicit `other` option, or use `allow_none`, when out-of-scope images are possible.
+- Validate [confidence](/concepts/confidence) thresholds on data from your own task.
+- The interactive demo on the product website is illustrative. It does not call a live inference service.
 
 ## Next steps
 
-- [Quick start](/quickstart)
-- [Choice](/primitives/choice)
-- [Score](/primitives/score)
-- [Noul](/primitives/noul)
-- [Confidence](/concepts/confidence)
-- [REST API Reference](/api-reference/overview)
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Send your first decision in under 60 seconds.
+  </Card>
+
+  <Card title="Example use cases" icon="lightbulb" href="/use-cases">
+    Practical patterns for catalog checks, triage, and routing.
+  </Card>
+
+  <Card title="Decision types" icon="sliders" href="/primitives/choice">
+    Choose between Choice, Score, and Noul.
+  </Card>
+
+  <Card title="REST API reference" icon="code" href="/api-reference/overview">
+    Endpoints, authentication, limits, and errors.
+  </Card>
+</CardGroup>
