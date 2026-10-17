@@ -3,26 +3,20 @@ title: "Example use cases"
 description: "Simple patterns for applying ImageJev to visual workflows."
 ---
 
-# Example use cases
-
 ImageJev works best as a focused decision step inside a larger workflow. Keep the question clear, define the outcomes your application can handle, and send uncertain cases for review.
 
-<CardGroup cols={2}>
-  <Card title="Catalog photo checks" icon="cart-shopping">
-    Check focus, lighting, background, or listing suitability before publishing an item.
-  </Card>
-  <Card title="Upload triage" icon="inbox">
-    Separate usable uploads from unclear or irrelevant images before the next step.
-  </Card>
-  <Card title="Document intake" icon="file-text">
-    Route likely receipts, forms, or other image types to the right workflow.
-  </Card>
-  <Card title="Human review routing" icon="shield-check">
-    Use confidence and relevance signals to send ambiguous cases to a person.
-  </Card>
-</CardGroup>
+## Common patterns
+
+| Use case | What it does |
+| --- | --- |
+| Catalog photo checks | Check focus, lighting, background, or listing suitability before publishing an item. |
+| Upload triage | Separate usable uploads from unclear or irrelevant images before the next step. |
+| Document intake | Route likely receipts, forms, or other image types to the right workflow. |
+| Human review routing | Use confidence and relevance signals to send ambiguous cases to a person. |
 
 ## Catalog photo checks
+
+Ask one question about the photo, include an `other` option for images that are not product photos, and approve only confident results.
 
 ```python
 from imagejev import ImageJev
@@ -49,7 +43,17 @@ else:
 
 ## Split complex checks
 
-Instead of one broad question, ask focused questions and combine them in your own code:
+Instead of one broad question, ask focused questions and combine the answers in your own code.
+
+```mermaid
+flowchart LR
+    I["listing.jpg"] --> Q1["Is the product in focus?"]
+    I --> Q2["Is the background suitable?"]
+    Q1 --> C{"Combine in your code"}
+    Q2 --> C
+    C -->|"Both yes and confident"| A["Approve listing"]
+    C -->|"Otherwise"| R["Send to review"]
+```
 
 ```python
 focus = jev.decide(
@@ -75,11 +79,23 @@ background = jev.decide(
         },
     },
 )
+
+ready = focus.choice == "yes" and background.choice == "yes"
+confident = min(focus.confidence, background.confidence) >= 0.85
+
+if ready and confident:
+    approve_listing()
+else:
+    send_to_review()
 ```
+
+<Tip>
+  To ask several questions about the same image in one request, use the [multi-question endpoint](/api-reference/systemone).
+</Tip>
 
 ## Review routing
 
-Confidence can help route work, but choose a threshold with examples from your own data:
+Confidence helps route work, but choose a threshold using examples from your own data.
 
 ```python
 if result.confidence >= 0.85 and result.choice != "other":
@@ -90,7 +106,10 @@ else:
 
 ## Keep expectations clear
 
-- Results are structured, but they are not a guarantee of correctness.
+<Warning>
+  Results are structured, but they are not a guarantee of correctness. The examples on this page are not accuracy or cost guarantees.
+</Warning>
+
 - Include an `other` option when images can fall outside the question.
 - Validate thresholds on representative examples from your task.
-- Do not use the examples here as accuracy or cost guarantees.
+- Revisit thresholds when your images or business rules change.
