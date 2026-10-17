@@ -29,6 +29,13 @@ htmlcov/
 
 venv/
 .env
+.env.*
+*.pem
+*.key
+id_rsa*
+*.sqlite
+*.dump
+.DS_Store
 .venv
 env/
 ENV/

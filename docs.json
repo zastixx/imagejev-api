@@ -9,6 +9,10 @@
   },
   "topbarLinks": [
     {
+      "name": "Benchmarks",
+      "url": "https://imagejev.dev/benchmarks"
+    },
+    {
       "name": "Interactive Studio",
       "url": "https://imagejev.dev/playground"
     },
@@ -18,8 +22,8 @@
     }
   ],
   "topbarCta": {
-    "name": "Console",
-    "url": "https://console.imagejev.dev"
+    "name": "Interactive Studio",
+    "url": "https://imagejev.dev/playground"
   },
   "navigation": {
     "groups": [
