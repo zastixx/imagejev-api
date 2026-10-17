@@ -1,138 +1,188 @@
 ---
-title: "Quick start"
-description: "Send your first structured visual decision to the ImageJev Cloud API in under 60 seconds."
+title: "Quickstart"
+description: "Send your first structured visual decision to the ImageJev API in under 60 seconds."
 ---
 
-# Quick start
+ImageJev is a high-speed, strictly typed visual decision API. You send an image (URL or base64) and a closed schema of options. ImageJev returns a deterministic decision with a calibrated confidence score in milliseconds.
 
-ImageJev provides a high-speed, strictly-typed visual decision API. Send an image URL (or base64) alongside a closed schema, and receive a deterministic decision with well-calibrated confidence in milliseconds.
-
-## 1. Authentication
-
-Every request to the ImageJev API requires a Bearer token or `X-API-Key` header:
-
-```bash
-Authorization: Bearer <YOUR_IMAGEJEV_API_KEY>
+```mermaid
+flowchart LR
+    A["Your app"] -->|"image + schema"| B["ImageJev API<br/>POST /decide"]
+    B -->|"choice + confidence"| C{"Confidence high enough?"}
+    C -->|"Yes"| D["Automate the action"]
+    C -->|"No"| E["Route to human review"]
 ```
 
-If you don't have an API key yet, [join the early access waitlist](https://imagejev.dev/waitlist) to receive your credentials.
+## Before you begin
 
----
+You need an ImageJev API key. If you don't have one yet, [join the early access waitlist](https://imagejev.dev/waitlist) to receive your credentials.
 
-## 2. Make Your First Decision
+<Warning>
+  Keep your API key secret. Store it in an environment variable and never commit it to source control or expose it in client-side code.
+</Warning>
 
-### Option A: cURL / HTTP
+<Steps>
+  <Step title="Set your API key">
+    Export your key as an environment variable:
 
-```bash
-curl -X POST https://api.imagejev.dev/decide \
-  -H "Authorization: Bearer $IMAGEJEV_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
-    "decision": "Evaluate catalog suitability",
-    "schema": {
-      "type": "choice",
-      "options": {
-        "pass": "clean, focused, professional catalog photo",
-        "fail": "blurry, dark, damaged, or cluttered photo"
-      }
-    }
-  }'
-```
+    ```bash
+    export IMAGEJEV_API_KEY="YOUR_IMAGEJEV_API_KEY"
+    ```
 
-### Option B: Python (`requests`)
+    Every request must authenticate with either a Bearer token or an `X-API-Key` header:
 
-```python
-import os
-import requests
+    <CodeGroup>
 
-API_KEY = os.getenv("IMAGEJEV_API_KEY", "your_api_key_here")
+    ```bash Bearer token
+    Authorization: Bearer YOUR_IMAGEJEV_API_KEY
+    ```
 
-response = requests.post(
-    "https://api.imagejev.dev/decide",
-    headers={
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
-    },
-    json={
+    ```bash X-API-Key
+    X-API-Key: YOUR_IMAGEJEV_API_KEY
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Make your first decision">
+    Send a `POST` request to `/decide` with an image, a decision prompt, and a schema. This example checks whether a photo is suitable for a product catalog.
+
+    <CodeGroup>
+
+    ```bash cURL
+    curl -X POST https://api.imagejev.dev/decide \
+      -H "Authorization: Bearer $IMAGEJEV_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
         "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
         "decision": "Evaluate catalog suitability",
         "schema": {
-            "type": "choice",
-            "options": {
-                "pass": "clean, focused, professional catalog photo",
-                "fail": "blurry, dark, damaged, or cluttered photo"
-            }
+          "type": "choice",
+          "options": {
+            "pass": "clean, focused, professional catalog photo",
+            "fail": "blurry, dark, damaged, or cluttered photo"
+          }
         }
-    }
-)
+      }'
+    ```
 
-result = response.json()
-print("Choice:", result["choice"])              # -> "pass"
-print("Confidence:", result["confidence"])      # -> 0.991
-print("Probabilities:", result["probabilities"])# -> {"pass": 0.994, "fail": 0.006}
-```
+    ```python Python
+    import os
+    import requests
+    
+    response = requests.post(
+        "https://api.imagejev.dev/decide",
+        headers={
+            "Authorization": f"Bearer {os.environ['IMAGEJEV_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+            "decision": "Evaluate catalog suitability",
+            "schema": {
+                "type": "choice",
+                "options": {
+                    "pass": "clean, focused, professional catalog photo",
+                    "fail": "blurry, dark, damaged, or cluttered photo",
+                },
+            },
+        },
+    )
+    response.raise_for_status()
+    result = response.json()
+    
+    print("Choice:       ", result["choice"])         # "pass"
+    print("Confidence:   ", result["confidence"])     # 0.991
+    print("Probabilities:", result["probabilities"])  # {"pass": 0.994, "fail": 0.006}
+    ```
 
-### Option C: TypeScript / JavaScript (`fetch`)
-
-```typescript
-const response = await fetch("https://api.imagejev.dev/decide", {
-  method: "POST",
-  headers: {
-    "Authorization": `Bearer ${process.env.IMAGEJEV_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
-    decision: "Evaluate catalog suitability",
-    schema: {
-      type: "choice",
-      options: {
-        pass: "clean, focused, professional catalog photo",
-        fail: "blurry, dark, damaged, or cluttered photo",
+    ```typescript TypeScript
+    const response = await fetch("https://api.imagejev.dev/decide", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.IMAGEJEV_API_KEY}`,
+        "Content-Type": "application/json",
       },
-    },
-  }),
-});
+      body: JSON.stringify({
+        image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+        decision: "Evaluate catalog suitability",
+        schema: {
+          type: "choice",
+          options: {
+            pass: "clean, focused, professional catalog photo",
+            fail: "blurry, dark, damaged, or cluttered photo",
+          },
+        },
+      }),
+    });
+    
+    const result = await response.json();
+    
+    console.log(result.choice);      // "pass"
+    console.log(result.confidence);  // 0.991
+    ```
 
-const result = await response.json();
-console.log(result.choice);      // "pass"
-console.log(result.confidence);  // 0.991
-```
+    </CodeGroup>
+  </Step>
+  <Step title="Read the result">
+    A successful request returns the chosen option and how sure ImageJev is about it:
 
----
+    ```json
+    {
+      "status": "success",
+      "choice": "pass",
+      "confidence": 0.991,
+      "probability": 0.994,
+      "latency_ms": 6.51,
+      "calibrated": true,
+      "probabilities": {
+        "pass": 0.994,
+        "fail": 0.006
+      }
+    }
+    ```
 
-## 3. Interpreting the Result
+    | Field | Description |
+    | --- | --- |
+    | `status` | Whether the request succeeded. |
+    | `choice` | The option from your schema that best matches the image. |
+    | `confidence` | Calibrated confidence in the decision, from 0 to 1. |
+    | `probability` | Probability assigned to the chosen option. |
+    | `latency_ms` | Processing time in milliseconds. |
+    | `calibrated` | Whether the confidence score has been calibrated. |
+    | `probabilities` | Probability for every option in your schema. |
+  </Step>
+  <Step title="Act on the decision">
+    Treat the result as a deterministic signal. Automate when confidence is high, and send uncertain cases to a person:
 
-```json
-{
-  "status": "success",
-  "choice": "pass",
-  "confidence": 0.991,
-  "probability": 0.994,
-  "latency_ms": 6.51,
-  "calibrated": true,
-  "probabilities": {
-    "pass": 0.994,
-    "fail": 0.006
-  }
-}
-```
+    ```python
+    if result["choice"] == "pass" and result["confidence"] >= 0.95:
+        auto_approve_listing()
+    else:
+        route_to_human_moderator()
+    ```
 
-Use the result as a deterministic signal in your application:
+    <Tip>
+      The `0.95` threshold is an example. Choose a value that matches how costly a wrong decision is for your use case. See [Confidence routing](/patterns/confidence-routing) for guidance.
+    </Tip>
+  </Step>
+</Steps>
 
-```python
-if result["choice"] == "pass" and result["confidence"] >= 0.95:
-    auto_approve_listing()
-else:
-    route_to_human_moderator()
-```
+## Next steps
 
----
+<CardGroup cols={2}>
+  <Card title="Single decision API" icon="bolt" href="/api-reference/decide">
+    Full reference for `POST /decide`.
+  </Card>
 
-## Next Steps
+  <Card title="Batch decision API" icon="layer-group" href="/api-reference/decide-batch">
+    Process many images in one request with `POST /decide/batch`.
+  </Card>
 
-- [Single Decision API (`POST /decide`)](/api-reference/decide)
-- [Batch Decision API (`POST /decide/batch`)](/api-reference/decide-batch)
-- [Decision Types & Schemas](/primitives/choice)
-- [Confidence & Calibration](/concepts/confidence)
+  <Card title="Decision types and schemas" icon="sliders" href="/primitives/choice">
+    Learn how to define choices, scores, and more.
+  </Card>
+
+  <Card title="Confidence and calibration" icon="chart-line" href="/concepts/confidence">
+    Understand what the confidence score means.
+  </Card>
+</CardGroup>
