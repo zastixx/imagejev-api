@@ -1,43 +1,36 @@
 ---
-title: "Batch Decisions (/decide_batch)"
-description: "Process up to 50 images in parallel using high-throughput matrix multiplication."
-api: "POST /decide_batch"
+title: "Batch decisions"
+description: "Apply one schema to up to 50 images in a single request."
 ---
 
-# Batch Decisions (`POST /decide_batch`)
+`POST /decide_batch`
 
-Evaluates a single decision schema across an array of up to 50 images simultaneously. 
-
-Because text criteria vectors are embedded once and multiplied against the batch image matrix in a single BLAS GEMM operation, batch inference is dramatically faster than looping individual calls.
+Evaluates one decision schema across up to 50 images. The decision criteria are processed once for the whole batch, which is faster than sending a separate request for each image.
 
 ## Request
 
 ### Headers
 
 | Header | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `Content-Type` | `string` | **Yes** | Must be `application/json`. |
-| `X-API-Key` | `string` | Conditional | Required when operating in `production` or `staging` environments. |
+| --- | --- | --- | --- |
+| `Content-Type` | `string` | Yes | Must be `application/json`. |
+| `X-API-Key` | `string` | Conditional | Required in `production` and `staging` environments. |
 
-### Body Parameters
+### Body parameters
 
-| Parameter | Type | Required | Constraints | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `images` | `string[]` | **Yes** | 1 to 50 items | List of image URLs, Base64 strings, or data URIs. |
-| `decision` | `string` | **Yes** | Max 1,000 chars | Decision question or evaluation criteria. |
-| `schema` | `object` | **Yes** | Valid schema | Choice, Score, or Noul schema definition applied to every image. |
+| Parameter | Type | Required | Limit | Description |
+| --- | --- | --- | --- | --- |
+| `images` | `string[]` | Yes | 1 to 50 items | Image URLs, Base64 strings, or data URIs. |
+| `decision` | `string` | Yes | 1,000 characters | The question or criteria to evaluate. |
+| `schema` | `object` | Yes | Valid schema | A Choice, Score, or Noul definition applied to every image. |
 
----
+## Limits
 
-## Constraints & Limits
+- **Batch size:** 1 to 50 images. An empty list or more than 50 images returns `400 Bad Request`.
+- **Order:** The response array matches the order of the `images` list, starting at index 0.
+- **Rate limit:** Batch requests have their own limit, 15 per minute by default. It is set by `IMAGEJEV_BATCH_RATE_LIMIT_PER_MINUTE` on self-hosted deployments.
 
-- **Maximum batch size**: `50` images per request. Requests with 0 or > 50 items return `HTTP 400 Bad Request`.
-- **Order preservation**: The returned array matches the exact 0-indexed order of the input `images` list.
-- **Dedicated Rate Limit**: Controlled by `IMAGEJEV_BATCH_RATE_LIMIT_PER_MINUTE` (default: 15 batch requests/min).
-
----
-
-## Code Examples
+## Example request
 
 <CodeGroup>
 ```bash cURL
@@ -61,7 +54,7 @@ curl -X POST "https://api.imagejev.dev/decide_batch" \
   }'
 ```
 
-```python Python (SDK)
+```python Python SDK
 from imagejev import ImageJevClient
 
 client = ImageJevClient(base_url="https://api.imagejev.dev", api_key="YOUR_API_KEY")
@@ -70,43 +63,43 @@ results = client.decide_batch(
     images=[
         "https://example.com/item1.jpg",
         "https://example.com/item2.jpg",
-        "https://example.com/item3.jpg"
+        "https://example.com/item3.jpg",
     ],
     decision="Is this product photo acceptable for catalog listing?",
     schema={
         "type": "choice",
         "options": {
             "pass": "clean, well-lit, isolated product photo",
-            "fail": "dark, blurry, watermarked, or damaged photo"
-        }
-    }
+            "fail": "dark, blurry, watermarked, or damaged photo",
+        },
+    },
 )
 
 for idx, res in enumerate(results):
     print(f"Image {idx}: {res.choice} (confidence: {res.confidence:.3f})")
 ```
 
-```typescript TypeScript / Fetch
+```typescript TypeScript
 const response = await fetch("https://api.imagejev.dev/decide_batch", {
   method: "POST",
   headers: {
     "X-API-Key": "YOUR_API_KEY",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     images: [
       "https://example.com/item1.jpg",
-      "https://example.com/item2.jpg"
+      "https://example.com/item2.jpg",
     ],
     decision: "Is this product photo acceptable for catalog listing?",
     schema: {
       type: "choice",
       options: {
         pass: "clean, well-lit, isolated product photo",
-        fail: "dark, blurry, watermarked, or damaged photo"
-      }
-    }
-  })
+        fail: "dark, blurry, watermarked, or damaged photo",
+      },
+    },
+  }),
 });
 
 const data = await response.json();
@@ -114,11 +107,9 @@ console.log(`Evaluated ${data.length} images.`);
 ```
 </CodeGroup>
 
----
+## Response
 
-## Response (`200 OK`)
-
-Returns a JSON array of result objects corresponding 1-to-1 with the input images:
+A successful request returns `200 OK` with a JSON array. Each item matches the result of [`POST /decide`](/api-reference/decide) for the same schema type, in the same order as `images`.
 
 ```json
 [
@@ -128,10 +119,7 @@ Returns a JSON array of result objects corresponding 1-to-1 with the input image
     "confidence": 0.948,
     "is_relevant": true,
     "relevance": 0.318,
-    "probabilities": {
-      "pass": 0.974,
-      "fail": 0.026
-    }
+    "probabilities": { "pass": 0.974, "fail": 0.026 }
   },
   {
     "choice": "fail",
@@ -139,10 +127,7 @@ Returns a JSON array of result objects corresponding 1-to-1 with the input image
     "confidence": 0.784,
     "is_relevant": true,
     "relevance": 0.284,
-    "probabilities": {
-      "pass": 0.108,
-      "fail": 0.892
-    }
+    "probabilities": { "pass": 0.108, "fail": 0.892 }
   }
 ]
 ```
