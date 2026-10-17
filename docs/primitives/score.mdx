@@ -3,8 +3,6 @@ title: "Score"
 description: "Rate an image against an ordered set of quality or intensity levels."
 ---
 
-# Score
-
 Use `score` when your workflow needs an ordered rating rather than a category.
 
 ```python
@@ -30,17 +28,30 @@ print(result.confidence)
 print(result.dispersion)
 ```
 
+## Schema
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `type` | `string` | Yes | Must be `"score"`. |
+| `levels` | `string[]` | Yes | Two to ten level descriptions, ordered from lowest to highest. |
+
 ## Result fields
 
 | Field | Description |
-| :--- | :--- |
-| `score` | The weighted result across the ordered levels |
-| `confidence` | A signal for how concentrated the result is |
-| `dispersion` | A signal that can reveal an ambiguous or split result |
-| `probabilities` | Probabilities for each level |
+| --- | --- |
+| `score` | The weighted result across the ordered levels. |
+| `probability` | Probability of the most likely level. |
+| `confidence` | A signal for how concentrated the result is. See [Confidence](/concepts/confidence). |
+| `dispersion` | A signal that can reveal an ambiguous or split result. |
+| `probabilities` | Probabilities for each level, keyed by level index. |
+| `legend` | A map from each level index to its description. |
+
+## Read dispersion
+
+A single score can hide disagreement. High `dispersion` means probability is spread beyond the most likely level and its neighbors, which often signals a split or ambiguous image. Treat these cases with extra care, for example by sending them to review.
 
 ## Tips
 
 - Keep levels ordered from lowest to highest.
 - Make adjacent levels meaningfully different.
-- Inspect `dispersion`; a single score can hide disagreement between levels.
+- Inspect `dispersion` together with `score`.
