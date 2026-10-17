@@ -3,8 +3,6 @@ title: "Choice"
 description: "Select one option from a clear set of visual outcomes."
 ---
 
-# Choice
-
 Use `choice` when your workflow needs one outcome from a defined list.
 
 ```python
@@ -29,17 +27,40 @@ print(result.confidence)
 print(result.probabilities)
 ```
 
+## Schema
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `type` | `string` | Yes | Must be `"choice"`. |
+| `options` | `object` | Yes | Two or more options. Each key is the option name and each value describes what it looks like. |
+| `allow_none` | `boolean` | No | When `true`, the result can be `null` if the image does not fit any option. |
+| `relevance_threshold` | `number` | No | Minimum similarity for a result to count as relevant. Controls `is_relevant`. |
+
 ## Result fields
 
 | Field | Description |
-| :--- | :--- |
-| `choice` | The selected option key |
-| `probability` | Probability assigned to the selected option |
-| `confidence` | A normalized signal for how concentrated the result is |
-| `probabilities` | Probabilities for every option |
+| --- | --- |
+| `choice` | The selected option key, or `null` when `allow_none` is `true` and nothing fits. |
+| `probability` | Probability assigned to the selected option. |
+| `confidence` | A normalized signal for how concentrated the result is. See [Confidence](/concepts/confidence). |
+| `is_relevant` | Whether the image is relevant to the options, based on `relevance_threshold`. |
+| `relevance` | The raw similarity score between the image and the options. |
+| `probabilities` | Probabilities for every option. |
 
 ## Tips
 
-- Describe what each option looks like.
+- Describe what each option looks like, not just its name.
 - Include `other` when an image may not fit the list.
 - Validate a confidence threshold on examples from your workflow.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Confidence" icon="gauge" href="/concepts/confidence">
+    Decide when to automate and when to review.
+  </Card>
+
+  <Card title="POST /decide" icon="code" href="/api-reference/decide">
+    Full request and response reference.
+  </Card>
+</CardGroup>
