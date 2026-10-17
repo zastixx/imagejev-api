@@ -1,30 +1,19 @@
 ---
-title: "Health & Metrics (/health)"
-description: "Inspect service liveness, active concurrency, rate limits, and server capacity."
-api: "GET /health"
+title: "Health and limits"
+description: "Check service status, current load, and configured limits."
 ---
 
-# Health & Metrics (`GET /health`)
+`GET /health`
 
-Returns the operational status, version, real-time concurrency saturation, and configured resource limits of the ImageJev inference service.
+Returns the service status, version, current concurrency, and configured limits.
 
 <Note>
-This endpoint is unauthenticated by design and can be polled freely by infrastructure orchestrators (e.g., Kubernetes liveness/readiness probes, AWS ALB target group health checks, Render, or Datadog synthetic monitors).
+This endpoint is public by design. Load balancers, Kubernetes probes, and uptime monitors can call it freely without an API key.
 </Note>
 
 ## Request
 
-```http
-GET /health HTTP/1.1
-Host: api.imagejev.dev
-Accept: application/json
-```
-
-No query parameters or authentication headers are required.
-
----
-
-## Code Examples
+No parameters or authentication are required.
 
 <CodeGroup>
 ```bash cURL
@@ -34,23 +23,23 @@ curl -X GET "https://api.imagejev.dev/health"
 ```python Python
 import requests
 
-resp = requests.get("https://api.imagejev.dev/health")
-data = resp.json()
+data = requests.get("https://api.imagejev.dev/health").json()
 
 print(f"Status: {data['status']}")
-print(f"Active in-flight requests: {data['concurrency']['in_flight']} / {data['concurrency']['max_concurrent']}")
+print(f"In flight: {data['concurrency']['in_flight']} / {data['concurrency']['max_concurrent']}")
 ```
 
-```typescript TypeScript / Fetch
+```typescript TypeScript
 const response = await fetch("https://api.imagejev.dev/health");
 const health = await response.json();
+
 console.log(health.status, health.limits);
 ```
 </CodeGroup>
 
----
+## Response
 
-## Response (`200 OK`)
+A healthy service returns `200 OK`:
 
 ```json
 {
@@ -73,17 +62,17 @@ console.log(health.status, health.limits);
 }
 ```
 
-### Response Schema
+### Response fields
 
 | Field | Type | Description |
-| :--- | :--- | :--- |
-| `status` | `string` | `"ok"` indicates the engine is ready to accept queries. |
-| `service` | `string` | Service identifier (`"imagejev"`). |
-| `version` | `string` | Running API server semantic version. |
-| `concurrency.in_flight` | `integer` | Number of requests currently executing inside the inference lock. |
-| `concurrency.max_concurrent` | `integer` | Maximum concurrent requests allowed before queueing or 503 rejection. |
+| --- | --- | --- |
+| `status` | `string` | `"ok"` means the service is ready for requests. |
+| `service` | `string` | Service name, always `"imagejev"`. |
+| `version` | `string` | Running server version. |
+| `concurrency.in_flight` | `integer` | Requests currently being processed. |
+| `concurrency.max_concurrent` | `integer` | Maximum concurrent requests before queueing or a `503` response. |
 | `rate_limiter.enabled` | `boolean` | Whether per-client rate limiting is active. |
-| `rate_limiter.default_rpm` | `integer` | Standard requests per minute allocation per client. |
-| `limits.max_batch_size` | `integer` | Maximum permitted images in a single `/decide_batch` call. |
-| `limits.max_questions` | `integer` | Maximum permitted questions in a single `/v1/systemone` call. |
-| `limits.max_image_mb` | `integer` | Maximum payload size in megabytes for binary and Base64 uploads. |
+| `rate_limiter.default_rpm` | `integer` | Default requests per minute for each client. |
+| `limits.max_batch_size` | `integer` | Maximum images per [`/decide_batch`](/api-reference/decide-batch) request. |
+| `limits.max_questions` | `integer` | Maximum questions per [`/v1/systemone`](/api-reference/systemone) request. |
+| `limits.max_image_mb` | `integer` | Maximum image size in megabytes. |
