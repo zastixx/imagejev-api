@@ -3,11 +3,33 @@ title: "Confidence"
 description: "Use confidence as a review and routing signal."
 ---
 
-# Confidence
+`choice` and `score` results include a `confidence` value between `0.0` and `1.0`. Use it to decide whether to automate a result or send it for review.
 
-`choice` and `score` results include a `confidence` value between `0.0` and `1.0`.
+<Warning>
+  Confidence is not a guarantee that a result is correct. It describes how concentrated the probabilities are, not how often the answer is right.
+</Warning>
 
-Confidence is useful for deciding whether to automate a result or send it for review. It is not a guarantee that the result is correct.
+## How confidence works
+
+| Field | What it tells you | Returned by |
+| --- | --- | --- |
+| `probability` | The probability assigned to the selected option. | Choice, Score, Noul |
+| `confidence` | How concentrated the probability distribution is, computed from its entropy. Higher means one outcome clearly dominates. | Choice, Score |
+
+Noul results return `probability` only.
+
+## Route on confidence
+
+Check both the outcome and the confidence before continuing automatically.
+
+```mermaid
+flowchart TD
+    A["Result from ImageJev"] --> B{"Expected choice?"}
+    B -->|"No"| R["Send to review"]
+    B -->|"Yes"| C{"Confidence at or above your threshold?"}
+    C -->|"Yes"| D["Continue the workflow"]
+    C -->|"No"| R
+```
 
 ```python
 result = jev.decide(
@@ -29,16 +51,27 @@ else:
     send_to_review()
 ```
 
-## Choosing a threshold
+## Choose a threshold
 
-There is no universal threshold. Use representative examples from your workflow and measure:
+There is no universal threshold. Measure it on representative examples from your workflow.
 
-- How often the result is correct.
-- How many cases can be automated.
-- How many uncertain cases reach review.
+<Steps>
+  <Step title="Collect examples">
+    Gather real images from your workflow, including unclear and out-of-scope ones.
+  </Step>
+  <Step title="Run and record">
+    Run ImageJev on each image and store the choice and confidence next to the correct answer.
+  </Step>
+  <Step title="Measure">
+    For each candidate threshold, measure how often automated results are correct, how many cases can be automated, and how many uncertain cases reach review.
+  </Step>
+  <Step title="Pick and revisit">
+    Choose the threshold that fits the cost of a wrong decision. Revisit it when your images or business rules change.
+  </Step>
+</Steps>
 
 ## Practical guidance
 
 - Keep an `other` option when an image may be out of scope.
-- Use `allow_none` when abstention is preferable to a forced choice.
-- Revisit thresholds when your images or business rules change.
+- Use `allow_none` when abstaining is better than forcing a choice.
+- For Score, also inspect [`dispersion`](/primitives/score) to catch split results.
