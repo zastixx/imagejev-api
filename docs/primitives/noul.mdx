@@ -3,8 +3,6 @@ title: "Noul"
 description: "Check whether one visual statement applies to an image."
 ---
 
-# Noul
-
 Use `noul` for a focused yes-or-no visual check.
 
 ```python
@@ -23,6 +21,20 @@ result = jev.decide(
 
 print(result.probability)
 ```
+
+## Schema
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `type` | `string` | Yes | Must be `"noul"`. |
+| `true` | `string` | Yes | Describes what the image looks like when the statement is true. |
+| `false` | `string` | Yes | Describes what the image looks like when the statement is false. |
+
+## Result fields
+
+| Field | Description |
+| --- | --- |
+| `probability` | Probability that the `true` statement applies to the image, from `0.0` to `1.0`. |
 
 ## Good uses
 
